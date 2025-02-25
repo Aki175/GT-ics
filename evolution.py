@@ -1,11 +1,11 @@
-# Name: Hakan Bektas & Akbar Islamov
+# Name: Hakan Bektas & Akbar Ismatullayev
 # Student ID: 15178684 & Add here (akbar)
 
 import numpy as np
 import heapq
 import matplotlib.pyplot as plt
 from tkinter import Tk, Label, Entry, Button, Checkbutton, BooleanVar
-from pyics import Model
+# from pyics import Model
 
 
 # General notes: cooperate = 1, defect = 0.
@@ -77,9 +77,83 @@ class Strategy:
 
     # Akbar voeg hier zelf nog 5 strategieen toe.
 
+    # deze is good tegen deadlocks omdat we switchen by punishment
+    def WSLS(self):
+        '''
+        win stay: meaning if the pay off is good thus both cooperated or we
+        got the temptation pay off we say with our choice like before.
+        If we lose shift, meaning if the pay off is bad thus we got punished
+        for both deflecting or we got a suckers pay off we switch our last
+        choice.
+        '''
+        if len(self.historyOpp) == 0:
+            return 1
+        lst_op = self.historyOpp[-1]
+        lst_own = self.historyOwn[-1]
+
+        if (lst_own == 1 and lst_op == 1) or (lst_own == 0 and lst_op == 1):
+            return lst_own
+
+        return (lst_own + 1) % 2
+
+    def Sneaky_Temptation(self):
+        '''
+        always cooperate but every third round deflect
+        '''
+
+        if len(self.historyOpp) == 0:
+            return 1
+        if (len(self.historyOwn) + 1) % 3 == 0:
+            return 0
+
+        return 1
+
+    def Anti_Tit_For_Tat(self):
+        '''
+        reverse of tit for that
+        '''
+        if len(self.historyOpp) == 0:
+            return 1
+        return int((self.historyOpp[-1] or 0) + 1) % 2
+
+
+    def Grim(self):
+        '''
+        always cooperate but when oppenent ever defected than always defect.
+        it is not forgiving
+        '''
+        if len(self.historyOpp) == 0:
+            return 1
+
+        if 0 in self.historyOpp:
+            return 0
+
+    def Adaptive_Gradual_TFT(self):
+        '''
+        It always cooperates only after the oppenent deflect 2 times
+        than it deflect always since it has a grudge but it is forgiven
+        when the opponent cooperates till the revenge counter is below 2.
+        '''
+
+        if len(self.historyOpp) == 0:
+            self.revenge_counter = 0
+            return 1
+
+        if self.historyOpp[-1] == 0:
+            self.revenge_counter += 1
+        else:
+            self.revenge_counter = max (0, self.revenge_counter - 1)
+
+        if self.revenge_counter >= 2:
+            return 0
+
+
+        return 1
+
 
     # Match / Round logic
 
+    # is dit de payoff table?
     def scoreRound(self, a, b):
         """
         Returns (pointsA, pointsB) for a single round,
@@ -116,37 +190,7 @@ class Strategy:
             histA_own.append(moveA)
 
             # B's move
-            moveB = None
-            if stratB == self.titForTat:
-                if len(histB_opp) == 0:
-                    moveB = 1
-                else:
-                    moveB = histB_opp[-1]
-            elif stratB == self.equallyRandom:
-                moveB = np.random.randint(0, 2)
-            elif stratB == self.cRandom:
-                moveB = np.random.choice([0, 1], p=[0.25, 0.75])
-            elif stratB == self.dRandom:
-                moveB = np.random.choice([0, 1], p=[0.75, 0.25])
-            elif stratB == self.moreNaive:
-                if len(histB_opp) >= 2:
-                    if histB_opp[-1] == 0 and histB_opp[-2] == 0:
-                        moveB = 0
-                    else:
-                        moveB = 1
-                else:
-                    moveB = 1
-            elif stratB == self.statisticalPlayer:
-                if len(histB_opp) == 0:
-                    moveB = 1
-                else:
-                    if histB_opp.count(0) > len(histB_opp)/2:
-                        moveB = 0
-                    else:
-                        moveB = 1
-            else:
-                pass  # Akbar voeg hier je eigen strategien toe
-
+            moveB = stratB()
             histB_own.append(moveB)
 
             # Now update each other's opponent history
@@ -159,6 +203,7 @@ class Strategy:
             scoreB += ptsB
 
         return scoreA, scoreB
+
 
     def tournament(self, rounds=10):
         """
@@ -173,89 +218,119 @@ class Strategy:
             self.cRandom,
             self.dRandom,
             self.moreNaive,
-            self.statisticalPlayer
-            # Akbar voeg hier je eigen strategien toe
+            self.statisticalPlayer,
+            self.WSLS,
+            self.Sneaky_Temptation,
+            self.Anti_Tit_For_Tat,
+            self.Grim,
+            self.Adaptive_Gradual_TFT
         ]
 
-        names = [
+        self.names = [
             "Tit-for-Tat",
             "Equally Random",
             "C-Random",
             "D-Random",
             "More Naive",
             "Statistical Player"
-            # Akbar voeg hier je strategie namen toe
+            "WSLS",
+            "Sneaky_Temptation",
+            "Anti_Tit_For_Tat",
+            "Grim",
+            "Adaptive_Gradual_TFT"
         ]
 
         n = len(stratList)
+        print(n)
+        print(len(self.names))
 
-        lowest = [9999999]*n
-        highest = [0]*n
-        sumScores = [0]*n
-        wins = [0]*n
-        mutual = [0]*n
-        gamesPlayed = [0]*n
+        self.lowest = [9999999] * n
+        self.highest = [0] * n
+        self.sumScores = [0] * n
+        self.wins = [0] * n
+        self.mutual = [0] * n
+        self.gamesPlayed = [0] * n
+        self.lowest_mutual = [0] * n
+        self.mutual_scores = []
+        self.lowest_mutual = [9999999] * n
+        self.highest_mutual = [0] * n
 
-        # Let every strategy play with each other (e.g there are 5 strategies
-        # called 1 2 3 4 5. Then 1 plays against 2 3 4 5 after 2 plays against
-        # 3 4 5 and so on).
+        # Let every strategy play with each other
         for i in range(n):
-            for j in range(i+1, n):
+            for j in range(i + 1, n):
                 scoreI, scoreJ = self.playMatch(stratList[i], stratList[j],
                                                 rounds)
                 # update i
-                if scoreI < lowest[i]:
-                    lowest[i] = scoreI
-                if scoreI > highest[i]:
-                    highest[i] = scoreI
-                sumScores[i] += scoreI
-                gamesPlayed[i] += 1
-                mutual[i] += (scoreI + scoreJ)
+                if scoreI < self.lowest[i]:
+                    self.lowest[i] = scoreI
+                if scoreI > self.highest[i]:
+                    self.highest[i] = scoreI
+                self.sumScores[i] += scoreI
+                self.gamesPlayed[i] += 1
+                self.mutual[i] += (scoreI + scoreJ)
 
                 # update j
-                if scoreJ < lowest[j]:
-                    lowest[j] = scoreJ
-                if scoreJ > highest[j]:
-                    highest[j] = scoreJ
-                sumScores[j] += scoreJ
-                gamesPlayed[j] += 1
-                mutual[j] += (scoreI + scoreJ)
+                if scoreJ < self.lowest[j]:
+                    self.lowest[j] = scoreJ
+                if scoreJ > self.highest[j]:
+                    self.highest[j] = scoreJ
+                self.sumScores[j] += scoreJ
+                self.gamesPlayed[j] += 1
+                self.mutual[j] += (scoreI + scoreJ)
+
+                # Store mutual score for this match
+                mutual_score = scoreI + scoreJ
+                self.mutual_scores.append(mutual_score)
+
+                # Update lowest and highest mutual scores
+                if mutual_score < self.lowest_mutual[i]:
+                    self.lowest_mutual[i] = mutual_score
+                if mutual_score > self.highest_mutual[i]:
+                    self.highest_mutual[i] = mutual_score
+                if mutual_score < self.lowest_mutual[j]:
+                    self.lowest_mutual[j] = mutual_score
+                if mutual_score > self.highest_mutual[j]:
+                    self.highest_mutual[j] = mutual_score
 
                 # who wins
                 if scoreI > scoreJ:
-                    wins[i] += 1
+                    self.wins[i] += 1
                 elif scoreJ > scoreI:
-                    wins[j] += 1
+                    self.wins[j] += 1
                 else:
                     pass  # tie, do nothing
 
         # compute average
-        avg = [0]*n
+        self.avg = [0] * n
         for i in range(n):
-            if gamesPlayed[i] > 0:
-                avg[i] = sumScores[i] / gamesPlayed[i]
+            if self.gamesPlayed[i] > 0:
+                self.avg[i] = self.sumScores[i] / self.gamesPlayed[i]
             else:
                 # never played, set everything to 0
-                lowest[i] = 0
-                highest[i] = 0
-                avg[i] = 0
+                self.lowest[i] = 0
+                self.highest[i] = 0
+                self.avg[i] = 0
+
+        # Compute mutual average, lowest, and highest
+        self.mutual_avg = np.mean(self.mutual_scores) if self.mutual_scores else 0
+        self.mutual_lowest = np.min(self.mutual_scores) if self.mutual_scores else 0
+        self.mutual_highest = np.max(self.mutual_scores) if self.mutual_scores else 0
 
         print("===== Tournament Results =====")
         for i in range(n):
-            print(f"{names[i]}:")
-            print(f"  Lowest = {lowest[i]}")
-            print(f"  Highest= {highest[i]}")
-            print(f"  Average= {avg[i]:.2f}")
-            print(f"  Wins   = {wins[i]}")
-            print(f"  Mutual = {mutual[i]}")
+            print(f"{self.names[i]}:")
+            print(f"  Lowest = {self.lowest[i]}")
+            print(f"  Highest= {self.highest[i]}")
+            print(f"  Average= {self.avg[i]:.2f}")
+            print(f"  Wins   = {self.wins[i]}")
+            print(f"  Mutual = {self.mutual[i]}")
             print("")
 
-        # Use of heap to retrieve and put the highest value efficiently (Good
-        # BIG o).
+        # Use of heap to retrieve and put the highest value efficiently
         pq = []
         for i in range(n):
             # negative so the largest mutual is at pop()
-            heapq.heappush(pq, (-mutual[i], i))
+            heapq.heappush(pq, (-self.mutual[i], i))
 
         print("===== TOP-5 By Mutual Points =====")
         topCount = min(5, n)
@@ -263,7 +338,50 @@ class Strategy:
             best = heapq.heappop(pq)
             idx = best[1]
             actualMut = -best[0]
-            print(f"{rank+1}. {names[idx]} with mutual={actualMut}")
+            print(f"{rank + 1}. {self.names[idx]} with mutual={actualMut}")
+
+    def plot(self):
+        """
+        Plots the results of the tournament. It will use a bar chart to show the
+        minimal, maximal, and average scores of each strategy.
+        """
+        # Prepare the data for the plot
+        data = list(zip(self.names, self.avg, self.lowest, self.highest))
+        # Sort the data by average score
+        data.sort(key=lambda x: x[1], reverse=True)
+        # Unpack the sorted data
+        self.names, self.avg, self.lowest, self.highest = zip(*data)
+
+        # Create a figure with a two subplot
+        _, ax = plt.subplots(figsize=(10, 6))
+        # _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+
+        # Plot for minimal, maximal, and average scores
+        x = np.arange(len(self.names))  # x-axis positions
+        width = 0.35  # Width of the bars
+
+        # Average scores
+        _ = ax.bar(x - width / 2, self.avg, width, label='Average', color='blue')
+        # Error bars for minimal and maximal scores
+        ax.errorbar(x - width / 2, self.avg,
+                    yerr=[np.subtract(self.avg, self.lowest),
+                          np.subtract(self.highest, self.avg)],
+                    fmt='o', color='red', label='Min/Max score', capsize=5)
+
+        # Labels and title for the plot
+        ax.set_xlabel('Strategies')
+        ax.set_ylabel('Scores')
+        ax.set_title('Minimal, maximal, and average scores per strategy')
+        ax.set_xticks(x - width / 2)
+        ax.set_xticklabels(self.names, rotation=45)
+        ax.legend()
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+
+        # Show the plot
+        plt.show()
 
 class SimpleGUI:
     """
@@ -292,6 +410,7 @@ class SimpleGUI:
         s = Strategy()
         r = int(self.roundsEntry.get())
         s.tournament(rounds=r)
+        s.plot()
 
     def start(self):
         self.root.mainloop()
@@ -300,5 +419,3 @@ class SimpleGUI:
 if __name__ == "__main__":
     gui = SimpleGUI()
     gui.start()
-
-
