@@ -297,6 +297,11 @@ class Strategy:
                 self.highest[i] = 0
                 self.avg[i] = 0
 
+        # Compute mutual average, lowest, and highest
+        self.mutual_avg = np.mean(self.mutual_scores) if self.mutual_scores else 0
+        self.mutual_lowest = np.min(self.mutual_scores) if self.mutual_scores else 0
+        self.mutual_highest = np.max(self.mutual_scores) if self.mutual_scores else 0
+
         print("===== Tournament Results =====")
         for i in range(n):
             print(f"{self.names[i]}:")
