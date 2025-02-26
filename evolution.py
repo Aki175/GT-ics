@@ -20,6 +20,12 @@ class Strategy:
         self.historyOwn = []
         self.historyOpp = []
 
+        self.reward = 0
+        self.temptation = 0
+        self.sucker = 0
+        self.punishment = 0
+
+
     def clearHistory(self):
         """
         Clears the stored history for a new match.
@@ -160,13 +166,14 @@ class Strategy:
         given the moves a, b in {0,1}.
         """
         if a == 1 and b == 1:
-            return (3, 3)
+            return (self.reward, self.reward)
         elif a == 0 and b == 0:
-            return (1, 1)
+            return (self.punishment, self.punishment)
         elif a == 1 and b == 0:
-            return (0, 5)
+            return (self.sucker, self.temptation)
         else:  # a==0, b==1
-            return (5, 0)
+            return (self.temptation, self.sucker)
+
 
     def playMatch(self, stratA, stratB, rounds=10):
         """
@@ -232,7 +239,7 @@ class Strategy:
             "C-Random",
             "D-Random",
             "More Naive",
-            "Statistical Player"
+            "Statistical Player",
             "WSLS",
             "Sneaky_Temptation",
             "Anti_Tit_For_Tat",
@@ -398,16 +405,43 @@ class SimpleGUI:
         self.roundsEntry.insert(0, "10")
         self.roundsEntry.grid(row=0, column=1, padx=10, pady=5)
 
+        Label(self.root, text="Reward (C, C):").grid(row=1, column=0, padx=10, pady=5)
+        self.rewardEntry = Entry(self.root)
+        self.rewardEntry.insert(0, "3")
+        self.rewardEntry.grid(row=1, column=1, padx=10, pady=5)
+
+        Label(self.root, text="Temptation (D, C):").grid(row=2, column=0, padx=10, pady=5)
+        self.temptationEntry = Entry(self.root)
+        self.temptationEntry.insert(0, "5")
+        self.temptationEntry.grid(row=2, column=1, padx=10, pady=5)
+
+        Label(self.root, text="Sucker (C, D):").grid(row=3, column=0, padx=10, pady=5)
+        self.suckerEntry = Entry(self.root)
+        self.suckerEntry.insert(0, "0")
+        self.suckerEntry.grid(row=3, column=1, padx=10, pady=5)
+
+        Label(self.root, text="Punishment (D, D):").grid(row=4, column=0, padx=10, pady=5)
+        self.punishmentEntry = Entry(self.root)
+        self.punishmentEntry.insert(0, "1")
+        self.punishmentEntry.grid(row=4, column=1, padx=10, pady=5)
+
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=1, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=5, column=0, columnspan=2, pady=10)
 
     def startTournament(self):
         """
         Reads 'rounds' from the GUI, then runs the Strategy.tournament().
         """
         s = Strategy()
+
+        s.reward = int(self.rewardEntry.get())
+        s.temptation = int(self.temptationEntry.get())
+        s.sucker = int(self.suckerEntry.get())
+        s.punishment = int(self.punishmentEntry.get())
+
+
         r = int(self.roundsEntry.get())
         s.tournament(rounds=r)
         s.plot()
