@@ -25,7 +25,6 @@ class Strategy:
         self.sucker = 0
         self.punishment = 0
 
-
     def clearHistory(self):
         """
         Clears the stored history for a new match.
@@ -257,37 +256,37 @@ class Strategy:
         self.wins = [0] * n
         self.mutual = [0] * n
         self.gamesPlayed = [0] * n
-        self.lowest_mutual = [0] * n
-        self.mutual_scores = []
         self.lowest_mutual = [9999999] * n
         self.highest_mutual = [0] * n
+        self.mutual_scores_per_strategy = [[] for _ in range(n)]
 
         # Let every strategy play with each other
         for i in range(n):
             for j in range(i + 1, n):
-                scoreI, scoreJ = self.playMatch(stratList[i], stratList[j],
-                                                rounds)
-                # update i
+                scoreI, scoreJ = self.playMatch(stratList[i], stratList[j], rounds)
+                mutual_score = scoreI + scoreJ
+
+                # Update mutual scores per strategy
+                self.mutual_scores_per_strategy[i].append(mutual_score)
+                self.mutual_scores_per_strategy[j].append(mutual_score)
+
+                # Update i
                 if scoreI < self.lowest[i]:
                     self.lowest[i] = scoreI
                 if scoreI > self.highest[i]:
                     self.highest[i] = scoreI
                 self.sumScores[i] += scoreI
                 self.gamesPlayed[i] += 1
-                self.mutual[i] += (scoreI + scoreJ)
+                self.mutual[i] += mutual_score
 
-                # update j
+                # Update j
                 if scoreJ < self.lowest[j]:
                     self.lowest[j] = scoreJ
                 if scoreJ > self.highest[j]:
                     self.highest[j] = scoreJ
                 self.sumScores[j] += scoreJ
                 self.gamesPlayed[j] += 1
-                self.mutual[j] += (scoreI + scoreJ)
-
-                # Store mutual score for this match
-                mutual_score = scoreI + scoreJ
-                self.mutual_scores.append(mutual_score)
+                self.mutual[j] += mutual_score
 
                 # Update lowest and highest mutual scores
                 if mutual_score < self.lowest_mutual[i]:
@@ -299,7 +298,7 @@ class Strategy:
                 if mutual_score > self.highest_mutual[j]:
                     self.highest_mutual[j] = mutual_score
 
-                # who wins
+                # Who wins
                 if scoreI > scoreJ:
                     self.wins[i] += 1
                 elif scoreJ > scoreI:
@@ -307,21 +306,24 @@ class Strategy:
                 else:
                     pass  # tie, do nothing
 
-        # compute average
+        # Compute average scores
         self.avg = [0] * n
         for i in range(n):
             if self.gamesPlayed[i] > 0:
                 self.avg[i] = self.sumScores[i] / self.gamesPlayed[i]
             else:
-                # never played, set everything to 0
+                # Never played, set everything to 0
                 self.lowest[i] = 0
                 self.highest[i] = 0
                 self.avg[i] = 0
 
-        # Compute mutual average, lowest, and highest
-        self.mutual_avg = np.mean(self.mutual_scores) if self.mutual_scores else 0
-        self.mutual_lowest = np.min(self.mutual_scores) if self.mutual_scores else 0
-        self.mutual_highest = np.max(self.mutual_scores) if self.mutual_scores else 0
+        # Compute mutual average per strategy
+        self.mutual_avg = [0] * n
+        for i in range(n):
+            if len(self.mutual_scores_per_strategy[i]) > 0:
+                self.mutual_avg[i] = np.mean(self.mutual_scores_per_strategy[i])
+            else:
+                self.mutual_avg[i] = 0
 
         print("===== Tournament Results =====")
         for i in range(n):
@@ -331,12 +333,13 @@ class Strategy:
             print(f"  Average= {self.avg[i]:.2f}")
             print(f"  Wins   = {self.wins[i]}")
             print(f"  Mutual = {self.mutual[i]}")
+            print(f"  Mutual Avg = {self.mutual_avg[i]:.2f}")
             print("")
 
         # Use of heap to retrieve and put the highest value efficiently
         pq = []
         for i in range(n):
-            # negative so the largest mutual is at pop()
+            # Negative so the largest mutual is at pop()
             heapq.heappush(pq, (-self.mutual[i], i))
 
         print("===== TOP-5 By Mutual Points =====")
@@ -349,7 +352,7 @@ class Strategy:
 
     def plot(self):
         """
-        Plots the results of the tournament. It will use a bar chart to show the
+        Plots the  results of the tournament. It will use a bar chart to show the
         minimal, maximal, and average scores of each strategy.
         """
         # Prepare the data for the plot
@@ -359,35 +362,103 @@ class Strategy:
         # Unpack the sorted data
         self.names, self.avg, self.lowest, self.highest = zip(*data)
 
-        # Create a figure with a two subplot
-        _, ax = plt.subplots(figsize=(10, 6))
-        # _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-
+        # Create a figure with two subplots
+        _, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 6))
         # Plot for minimal, maximal, and average scores
-        x = np.arange(len(self.names))  # x-axis positions
-        width = 0.35  # Width of the bars
+        x = np.arange(len(self.names))
+        width = 0.32
 
         # Average scores
-        _ = ax.bar(x - width / 2, self.avg, width, label='Average', color='blue')
+        _ = ax1.bar(x - width / 2, self.avg, width, label='Average', color='blue')
         # Error bars for minimal and maximal scores
-        ax.errorbar(x - width / 2, self.avg,
+        ax1.errorbar(x - width / 2, self.avg,
                     yerr=[np.subtract(self.avg, self.lowest),
-                          np.subtract(self.highest, self.avg)],
+                        np.subtract(self.highest, self.avg)],
                     fmt='o', color='red', label='Min/Max score', capsize=5)
 
-        # Labels and title for the plot
-        ax.set_xlabel('Strategies')
-        ax.set_ylabel('Scores')
-        ax.set_title('Minimal, maximal, and average scores per strategy')
-        ax.set_xticks(x - width / 2)
-        ax.set_xticklabels(self.names, rotation=45)
-        ax.legend()
+        # Labels and title for the first plot
+        ax1.set_xlabel('Strategies')
+        ax1.set_ylabel('Scores')
+        ax1.set_title('Minimal, maximal, and average scores per strategy')
+        ax1.set_xticks(x - width / 2)
+        ax1.set_xticklabels(self.names, rotation=45)
+        ax1.legend()
 
-        # Adjust layout to prevent overlap
+        # Prepare data for mutual scores plot
+        # Create a list of strategy pairs and their mutual scores
+        strategy_pairs = []
+        mutual_scores = []
+        mutual_lowest = []
+        mutual_highest = []
+
+        for i in range(len(self.names)):
+            for j in range(i + 1, len(self.names)):
+                strategy_pairs.append(f"{self.names[i]} vs {self.names[j]}")
+                mutual_score = self.mutual_scores_per_strategy[i][j - i - 1]
+                mutual_scores.append(mutual_score)
+                mutual_lowest.append(self.lowest_mutual[i])
+                mutual_highest.append(self.highest_mutual[i])
+
+        # Combine into a list of tuples and sort by mutual score (descending)
+        mutual_data = list(zip(strategy_pairs, mutual_scores, mutual_lowest, mutual_highest))
+        mutual_data.sort(key=lambda x: x[1], reverse=True)
+
+        # Select the top 5
+        top_5_mutual = mutual_data[:5]
+
+        # Unpack the top 5
+        top_strategy_pairs, top_mutual_scores, top_mutual_lowest, top_mutual_highest = zip(*top_5_mutual)
+
+        # Plot for mutual scores (top 5 only)
+        x_mutual = np.arange(len(top_strategy_pairs))  # x-axis positions for
+        # mutual scores
+        _ = ax2.bar(x_mutual, top_mutual_scores, width, label='Mutual Score',
+                    color='green')
+        # Error bars for minimal and maximal mutual scores
+        ax2.errorbar(x_mutual, top_mutual_scores,
+                    yerr=[np.subtract(top_mutual_scores, top_mutual_lowest),
+                        np.subtract(top_mutual_highest, top_mutual_scores)],
+                    fmt='o', color='orange', label='Min/Max Mutual Score',
+                    capsize=5)
+
+        print(top_strategy_pairs)
+        print(top_mutual_scores)
+
+        # Labels and title for the second plot
+        ax2.set_xlabel('Strategy Pairs')
+        ax2.set_ylabel('Mutual Scores')
+        ax2.set_title(
+            'Top 5 Mutual scores per strategy pair\n'
+            'Mutual score = sum of scores over all rounds\n'
+            'Min/Max = lowest/highest mutual score in a single match'
+        )
+        ax2.set_xticks(x_mutual)
+        ax2.set_xticklabels(top_strategy_pairs, rotation=45)
+        ax2.legend()
+
+        # Plot for average wins per strategy
+        avg_wins = [self.wins[i] / self.gamesPlayed[i]
+                    if self.gamesPlayed[i] > 0 else 0
+                    for i in range(len(self.names))]
+
+        #Combine into a list of tuples and sort by mutual score (descending)
+        win_data = list(zip(self.names, avg_wins))
+        win_data.sort(key=lambda x: x[1], reverse=True)
+
+        # Unpack the top 5
+        self.names, avg_wins = zip(*win_data)
+
+        _ = ax3.bar(x, avg_wins, width, label='Average Wins', color='purple')
+
+        # Labels and title for the third plot
+        ax3.set_xlabel('Strategies')
+        ax3.set_ylabel('Average Wins')
+        ax3.set_title('Average number of wins per strategy')
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(self.names, rotation=45)
+        ax3.legend()
+
         plt.tight_layout()
-
-        # Show the plot
         plt.show()
 
 class SimpleGUI:
@@ -402,7 +473,7 @@ class SimpleGUI:
             row=0, column=0, padx=10, pady=5
         )
         self.roundsEntry = Entry(self.root)
-        self.roundsEntry.insert(0, "10")
+        self.roundsEntry.insert(0, "50")
         self.roundsEntry.grid(row=0, column=1, padx=10, pady=5)
 
         Label(self.root, text="Reward (C, C):").grid(row=1, column=0, padx=10, pady=5)
@@ -440,7 +511,6 @@ class SimpleGUI:
         s.temptation = int(self.temptationEntry.get())
         s.sucker = int(self.suckerEntry.get())
         s.punishment = int(self.punishmentEntry.get())
-
 
         r = int(self.roundsEntry.get())
         s.tournament(rounds=r)
