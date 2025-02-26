@@ -24,6 +24,8 @@ class Strategy:
         self.temptation = 0
         self.sucker = 0
         self.punishment = 0
+        self.genetic = False
+
 
     def clearHistory(self):
         """
@@ -210,6 +212,8 @@ class Strategy:
 
         return scoreA, scoreB
 
+    def tournament_random(self):
+        pass
 
     def tournament(self, rounds=10):
         """
@@ -218,6 +222,10 @@ class Strategy:
         Then prints results and uses a heap to pick top-5 by mutual points.
         """
         # Store references to the strategy methods in a list:
+        if self.genetic:
+            self.tournament_random()
+
+
         stratList = [
             self.titForTat,
             self.equallyRandom,
@@ -496,10 +504,22 @@ class SimpleGUI:
         self.punishmentEntry.insert(0, "1")
         self.punishmentEntry.grid(row=4, column=1, padx=10, pady=5)
 
+
+        Label(self.root, text="Genetic Mode:").grid(row=5, column=0, padx=10, pady=5)
+        self.geneticModeVar = BooleanVar()
+        self.geneticModeCheck = Checkbutton(self.root, variable=self.geneticModeVar)
+        self.geneticModeCheck.grid(row=5, column=1, padx=10, pady=5)
+
+        Label(self.root, text="Previous Moves (N):").grid(row=6, column=0, padx=10, pady=5)
+        self.nEntry = Entry(self.root)
+        self.nEntry.insert(0, "1")  # Default N=1
+        self.nEntry.grid(row=6, column=1, padx=10, pady=5)
+
+
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=5, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=7, column=0, columnspan=2, pady=10)
 
     def startTournament(self):
         """
@@ -511,6 +531,8 @@ class SimpleGUI:
         s.temptation = int(self.temptationEntry.get())
         s.sucker = int(self.suckerEntry.get())
         s.punishment = int(self.punishmentEntry.get())
+
+        s.genetic = self.geneticModeVar.get()
 
         r = int(self.roundsEntry.get())
         s.tournament(rounds=r)
