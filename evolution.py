@@ -6,7 +6,6 @@ import heapq
 import matplotlib.pyplot as plt
 import itertools
 from tkinter import Tk, Label, Entry, Button, Checkbutton, BooleanVar
-# from pyics import Model
 
 
 # General notes: cooperate = 1, defect = 0.
@@ -27,6 +26,25 @@ class Strategy:
         self.punishment = 0
         self.genetic = False
         self.genetic_previous_n = 1
+        self.population_size = 0
+
+
+        self.stratList = [
+        self.titForTat,
+        self.equallyRandom,
+        self.cRandom,
+        self.dRandom,
+        self.moreNaive,
+        self.statisticalPlayer,
+        self.WSLS,
+        self.Sneaky_Temptation,
+        self.Anti_Tit_For_Tat,
+        self.Grim,
+        self.Adaptive_Gradual_TFT
+        ]
+
+        np.random.seed(42)
+
 
 
     def clearHistory(self):
@@ -103,6 +121,7 @@ class Strategy:
         if (lst_own == 1 and lst_op == 1) or (lst_own == 0 and lst_op == 1):
             return lst_own
 
+        # If we lose we switch
         return (lst_own + 1) % 2
 
     def Sneaky_Temptation(self):
@@ -217,19 +236,52 @@ class Strategy:
     def generate_random_rule_table(self):
         # since for every n you have 4 states
         choices = [(0, 0), (0, 1), (1, 0), (1, 1)]
-
-        all_combinations = list(itertools.product(choices, repeat=self.genetic_previous_n))
+        # responses
+        states = [0, 1]
+        all_combinations = list(itertools.product(choices,
+                                                  repeat=self.genetic_previous_n))
         print(all_combinations)
 
-        rule_table = {combination: np.random.choice(choices) for combination in all_combinations}
+        rule_table = {combination: np.random.choice(states) for combination
+                      in all_combinations}
 
 
         return rule_table
 
-    def tournament_random(self):
-        rule_tables = [self.generate_random_rule_table() for _ in range(20)]
+    def tournament_random(self, rounds=10):
 
-        pass
+        self.sumScores = [0] * self.population_size
+        self.cooperation_count = [0] * self.population_size
+        self.retaliating_count = [0] * self.population_size
+
+        rule_tables = [self.generate_random_rule_table()
+                       for _ in range(self.population_size)]
+
+        for rule_table in rule_tables:
+            print(rule_table)
+            for strategy in self.stratList:
+                self.playMatch(strategy, rule_table, rounds)
+                rule_table, strategy = self.playMatch(self.stratList[rule_table],
+                                                 self.stratList[strategy], rounds)
+
+                # Update the summed score for each rule table
+                self.sumScores[rule_table] += rule_table
+                if rule_table == 3 and strategy == 3:
+                    self.cooperation_count[rule_table] += 1
+                elif rule_table > strategy:
+                    self.retaliating_count[rule_table] += 1
+
+    def plot_rule_table(self):
+        _, ax = plt.subplots(1, 1, figsize=(10, 6))
+        x = np.arange(self.population_size)
+        width = 0.32
+
+        # Plot for sume scores
+        _ = ax.bar(x - width / 2, self.sumScores, width, label='Sum Scores',
+        color='blue')
+        plt.tight_layout()
+        plt.show()
+
 
     def tournament(self, rounds=10):
         """
@@ -240,21 +292,6 @@ class Strategy:
         # Store references to the strategy methods in a list:
         if self.genetic:
             self.tournament_random()
-
-
-        stratList = [
-            self.titForTat,
-            self.equallyRandom,
-            self.cRandom,
-            self.dRandom,
-            self.moreNaive,
-            self.statisticalPlayer,
-            self.WSLS,
-            self.Sneaky_Temptation,
-            self.Anti_Tit_For_Tat,
-            self.Grim,
-            self.Adaptive_Gradual_TFT
-        ]
 
         self.names = [
             "Tit-for-Tat",
@@ -270,7 +307,7 @@ class Strategy:
             "Adaptive_Gradual_TFT"
         ]
 
-        n = len(stratList)
+        n = len(self.stratList)
         print(n)
         print(len(self.names))
 
@@ -291,7 +328,8 @@ class Strategy:
         # anders dubbel tegen gaat.
         for i in range(n):
             for j in range(i + 1, n):
-                scoreI, scoreJ = self.playMatch(stratList[i], stratList[j], rounds)
+                scoreI, scoreJ = self.playMatch(self.stratList[i],
+                                                 self.stratList[j], rounds)
                 mutual_score = scoreI + scoreJ
 
                 # Update mutual scores per strategy
@@ -535,11 +573,17 @@ class SimpleGUI:
         self.nEntry.insert(0, "1")  # Default N=1
         self.nEntry.grid(row=6, column=1, padx=10, pady=5)
 
+        Label(self.root, text="Population size").grid(row=7, column=0, padx=10, pady=5)
+        self.PopSize = Entry(self.root)
+        self.PopSize.insert(0, "20")
+        self.PopSize.grid(row=7, column=1, padx=10, pady=5)
+
+
 
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=7, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=8, column=0, columnspan=2, pady=10)
 
     def startTournament(self):
         """
@@ -555,10 +599,16 @@ class SimpleGUI:
         s.genetic = self.geneticModeVar.get()
         s.genetic_previous_n = int(self.nEntry.get())
 
+        s.population_size = int(self.PopSize.get())
+
+
         r = int(self.roundsEntry.get())
-        s.generate_random_rule_table()
+        # s.generate_random_rule_table()
+        s.tournament_random(rounds=r)
+        s.plot_rule_table()
+        # s.tournament_random(rounds=r)
         # s.tournament(rounds=r)
-        s.plot()
+        # s.plot()
 
     def start(self):
         self.root.mainloop()
