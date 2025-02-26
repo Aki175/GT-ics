@@ -4,6 +4,7 @@
 import numpy as np
 import heapq
 import matplotlib.pyplot as plt
+import itertools
 from tkinter import Tk, Label, Entry, Button, Checkbutton, BooleanVar
 # from pyics import Model
 
@@ -25,6 +26,7 @@ class Strategy:
         self.sucker = 0
         self.punishment = 0
         self.genetic = False
+        self.genetic_previous_n = 1
 
 
     def clearHistory(self):
@@ -212,7 +214,21 @@ class Strategy:
 
         return scoreA, scoreB
 
+    def generate_random_rule_table(self):
+        # since for every n you have 4 states
+        choices = [(0, 0), (0, 1), (1, 0), (1, 1)]
+
+        all_combinations = list(itertools.product(choices, repeat=self.genetic_previous_n))
+        print(all_combinations)
+
+        rule_table = {combination: np.random.choice(choices) for combination in all_combinations}
+
+
+        return rule_table
+
     def tournament_random(self):
+        rule_tables = [self.generate_random_rule_table() for _ in range(20)]
+
         pass
 
     def tournament(self, rounds=10):
@@ -269,6 +285,10 @@ class Strategy:
         self.mutual_scores_per_strategy = [[] for _ in range(n)]
 
         # Let every strategy play with each other
+
+        # stel we hebben 10 combinaties begint bij i 1, j is 2 till n.
+        # i heeft all gevochten dus nu i is 2 j moet altijd plus 1 omdat je
+        # anders dubbel tegen gaat.
         for i in range(n):
             for j in range(i + 1, n):
                 scoreI, scoreJ = self.playMatch(stratList[i], stratList[j], rounds)
@@ -533,9 +553,11 @@ class SimpleGUI:
         s.punishment = int(self.punishmentEntry.get())
 
         s.genetic = self.geneticModeVar.get()
+        s.genetic_previous_n = int(self.nEntry.get())
 
         r = int(self.roundsEntry.get())
-        s.tournament(rounds=r)
+        s.generate_random_rule_table()
+        # s.tournament(rounds=r)
         s.plot()
 
     def start(self):
