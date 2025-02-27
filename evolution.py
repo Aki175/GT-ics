@@ -185,7 +185,9 @@ class Strategy:
         n = self.genetic_previous_n
 
         if len(self.historyOpp) < n:
-            return self.equally_random()
+            response = self.equally_random()
+            print(response)
+            return response
 
         own_moves = self.historyOwn[-n:]
         opp_moves = self.historyOpp[-n:]
