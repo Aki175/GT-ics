@@ -1,5 +1,5 @@
 # Name: Hakan Bektas & Akbar Ismatullayev
-# Student ID: 15178684 & Add here (akbar)
+# Student ID: 15178684 & 14991721 (akbar)
 
 import numpy as np
 import heapq
@@ -368,7 +368,7 @@ class Strategy:
             heapq.heappush(pq, (-self.sumScores[i], i))
 
         print("===== TOP-6 By Scores =====")
-        best_scores = []
+        self.best_scores = []
         self.topCount = min(6, len(rule_tables))
         for rank in range(self.topCount):
             best = heapq.heappop(pq)
@@ -376,12 +376,10 @@ class Strategy:
             actual_score = -best[0]
             print(f"{rank + 1}. Rule table {idx} with score={actual_score}")
             print(f"   Rule table: {rule_tables[idx]}")
-            best_scores.append(idx)
+            self.best_scores.append(idx)
 
-        for i in range(0, len(best_scores), 2):
-            idx = best_scores[i]
-            child = self.divide_rule_table(rule_tables[idx], i)
-
+        # for idx in best_scores:
+        #     father, mother = divide_rule_table(self, rule_tables[best_idx], i)
 
     def plot_rule_table(self):
         totalRoundsPerRT = self.round * len(self.stratList)
