@@ -38,6 +38,9 @@ class Strategy:
         self.statisticalPlayer,
         self.WSLS,
         self.Sneaky_Temptation,
+        self.Anti_Tit_For_Tat,
+        self.Grim,
+        self.Adaptive_Gradual_TFT
         ]
 
         np.random.seed(42)
@@ -185,9 +188,7 @@ class Strategy:
         n = self.genetic_previous_n
 
         if len(self.historyOpp) < n:
-            response = self.equally_random()
-            print(response)
-            return response
+            return self.equally_random()
 
         own_moves = self.historyOwn[-n:]
         opp_moves = self.historyOpp[-n:]
@@ -335,6 +336,9 @@ class Strategy:
             "Statistical Player",
             "WSLS",
             "Sneaky_Temptation",
+            "Anti_Tit_For_Tat",
+            "Grim",
+            "Adaptive_Gradual_TFT"
         ]
 
         n = len(self.stratList)
