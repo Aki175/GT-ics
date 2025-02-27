@@ -27,6 +27,7 @@ class Strategy:
         self.genetic = False
         self.genetic_previous_n = 1
         self.population_size = 0
+        self.generations = 0
         self.round = 0
 
 
@@ -315,30 +316,50 @@ class Strategy:
 
         return rule_table
 
-    def divide_rule_table(self, rule_table, idx, num_divisions=6):
-        # Calculate total size based on formula 4^n
+    def divide_rule_table(self, father, mother):
+        """
+        Creates a child rule table by taking 50% of the rules from the father and 50% from the mother.
+        If the total number of rules is odd, the extra rule is taken from the father.
+        """
         n = self.genetic_previous_n
-        total_combinations = 4**n
+        size_rule_table = len(father)
 
-        # Convert dictionary to list of items for easier slicing
-        rule_items = list(rule_table.items())
+        father_items = list(father.items())
+        mother_items = list(mother.items())
 
-        # Calculate division size
-        division_size = total_combinations // num_divisions
+        half_size = size_rule_table // 2
+        extra_from_father = size_rule_table % 2
 
-        # Get the specific division for father
-        start_idx = idx * division_size
-        end_idx = min((idx + 1) * division_size, total_combinations)
+        father_part = father_items[:half_size]
 
-        # Create father rule table with the selected items
-        father_items = rule_items[start_idx:end_idx]
-        father = dict(father_items)
+        mother_part = mother_items[-half_size:]
 
-        # Create mother rule table with the remaining items
-        mother_items = rule_items[:start_idx] + rule_items[end_idx:]
-        mother = dict(mother_items)
 
-        return father, mother
+
+        child_items = father_part + mother_part
+
+        if extra_from_father:
+            child_items.append(father_items[-1])
+
+
+
+        print(child_items)
+
+        child = dict(child_items)
+        print(child)
+
+        # if the mutation prob is 50%
+        if  np.random.rand() >= 0.5:
+            mutation_index = np.random.randint(0, len(child_items))
+
+            key_to_mutate = list(child.keys())[mutation_index]
+            child[key_to_mutate] = (child[key_to_mutate] + 1 ) % 2
+            print(f"Mutation applied at {key_to_mutate}, new value: {child[key_to_mutate]}")
+
+        print(child)
+
+        return child
+
 
 
     def tournament_random(self):
@@ -351,6 +372,7 @@ class Strategy:
                        for _ in range(self.population_size)]
 
         # Every rule table plays against every strategy
+        # for _ in range(self.generations):
         for rt in range(len(rule_tables)):
             rule_table = rule_tables[rt]
             print(f"Rule table {rt}: {rule_table}")
@@ -378,8 +400,11 @@ class Strategy:
             print(f"   Rule table: {rule_tables[idx]}")
             self.best_scores.append(idx)
 
-        # for idx in best_scores:
-        #     father, mother = divide_rule_table(self, rule_tables[best_idx], i)
+        for i in range(0, len(self.best_scores) - 1, 2):
+            father_idx = self.best_scores[i]
+            mother_idx = self.best_scores[i + 1]  # Use next top parent from best_scores
+            child = self.divide_rule_table(rule_tables[father_idx], rule_tables[mother_idx])
+            rule_tables.append(child)
 
     def plot_rule_table(self):
         totalRoundsPerRT = self.round * len(self.stratList)
@@ -720,15 +745,20 @@ class SimpleGUI:
         self.PopSize.insert(0, "20")
         self.PopSize.grid(row=7, column=1, padx=10, pady=5)
 
+        Label(self.root, text="Generations").grid(row=8, column=0, padx=10, pady=5)
+        self.GenSize = Entry(self.root)
+        self.GenSize.insert(0, "50")
+        self.GenSize.grid(row=8, column=1, padx=10, pady=5)
+
 
 
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=8, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=9, column=0, columnspan=2, pady=10)
 
         Button(self.root, text="Exit", command=self.root.quit)\
-            .grid(row=9, column=0, columnspan=2, pady=10)
+            .grid(row=10, column=0, columnspan=2, pady=10)
 
 
     def startTournament(self):
@@ -746,6 +776,8 @@ class SimpleGUI:
         s.genetic_previous_n = int(self.nEntry.get())
 
         s.population_size = int(self.PopSize.get())
+
+        s.generations = int(self.GenSize.get())
 
 
         # r = int(self.roundsEntry.get())
