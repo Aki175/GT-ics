@@ -387,9 +387,8 @@ class Strategy:
         totalRoundsPerRT = self.round * len(self.stratList)
 
         cooperationRate = []
-        for i in range(self.topCount):
+        for i in range(len(self.best_scores)):
             coop = self.cooperation_count_random[i]
-            # je totale moves = totalRoundsPerRT
             cRate = coop / totalRoundsPerRT
             cooperationRate.append(cRate)
 
