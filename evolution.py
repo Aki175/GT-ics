@@ -31,7 +31,7 @@ class Strategy:
 
         self.stratList = [
         self.titForTat,
-        self.equallyRandom,
+        self.equally_random,
         self.cRandom,
         self.dRandom,
         self.moreNaive,
@@ -64,7 +64,7 @@ class Strategy:
             return 1
         return self.historyOpp[-1]
 
-    def equallyRandom(self):
+    def equally_random(self):
         """
         Randomly choose 0 or 1 with 50% chance.
         """
@@ -101,8 +101,6 @@ class Strategy:
         if self.historyOpp.count(0) > (len(self.historyOpp) / 2):
             return 0
         return 1
-
-    # Akbar voeg hier zelf nog 5 strategieen toe.
 
     # deze is good tegen deadlocks omdat we switchen by punishment
     def WSLS(self):
@@ -156,6 +154,8 @@ class Strategy:
         if 0 in self.historyOpp:
             return 0
 
+        return 1
+
     def Adaptive_Gradual_TFT(self):
         '''
         It always cooperates only after the oppenent deflect 2 times
@@ -177,6 +177,27 @@ class Strategy:
 
 
         return 1
+
+    def random_strat(self, rule_table):
+
+        """
+        Does the random strategies based on their rule table. We look at the
+        history till n and make the combinations of the history of our own
+        and our opp. This is our key in our dictonary.
+        """
+        n = self.genetic_previous_n
+
+        if len(self.historyOpp) < n:
+            response = self.equally_random()
+            print(response)
+            return response
+
+        own_moves = self.historyOwn[-n:]
+        opp_moves = self.historyOpp[-n:]
+        combination_key = tuple(zip(own_moves, opp_moves))
+        print(f"Combination key: {combination_key}")
+        print(rule_table[combination_key])
+        return rule_table[combination_key]
 
 
     # Match / Round logic
@@ -210,11 +231,20 @@ class Strategy:
         histB_own = []
         histB_opp = []
 
+        # we moeten hier adden van of is aangekruist of niet.
+
         scoreA, scoreB = 0, 0
 
+
         for _ in range(rounds):
+            if self.genetic:
+                moveA = self.random_strat(stratA)
+            else:
+                print("stratA" + str(stratA))
+                moveA = stratA()
+
+
             # A's move
-            moveA = stratA()
             # record A's move in A's own history
             histA_own.append(moveA)
 
@@ -244,6 +274,7 @@ class Strategy:
 
         rule_table = {combination: np.random.choice(states) for combination
                       in all_combinations}
+        print(rule_table)
 
 
         return rule_table
@@ -257,19 +288,24 @@ class Strategy:
         rule_tables = [self.generate_random_rule_table()
                        for _ in range(self.population_size)]
 
-        for rule_table in rule_tables:
-            print(rule_table)
-            for strategy in self.stratList:
-                self.playMatch(strategy, rule_table, rounds)
-                rule_table, strategy = self.playMatch(self.stratList[rule_table],
-                                                 self.stratList[strategy], rounds)
+        # Every rule table plays against every strategy
+        for rt in range(len(rule_tables)):
+            rule_table = rule_tables[rt]
+            print(f"Rule table {rt}: {rule_table}")
 
-                # Update the summed score for each rule table
-                self.sumScores[rule_table] += rule_table
-                if rule_table == 3 and strategy == 3:
-                    self.cooperation_count[rule_table] += 1
-                elif rule_table > strategy:
-                    self.retaliating_count[rule_table] += 1
+            for s in range(len(self.stratList)):
+                strategy = self.stratList[s]
+                print(f"Strategy {s}: {strategy}")
+
+                scoreA, scoreB = self.playMatch(rule_table, strategy, rounds)
+
+                self.sumScores[rt] += scoreB
+                # Cooperation.
+                if scoreA == scoreB:
+                    self.cooperation_count[rt] += 1
+                    # Adventageous defection.
+                elif scoreB > scoreA:
+                    self.retaliating_count[rt] += 1
 
     def plot_rule_table(self):
         _, ax = plt.subplots(1, 1, figsize=(10, 6))
@@ -539,7 +575,7 @@ class SimpleGUI:
             row=0, column=0, padx=10, pady=5
         )
         self.roundsEntry = Entry(self.root)
-        self.roundsEntry.insert(0, "50")
+        self.roundsEntry.insert(0, "10")
         self.roundsEntry.grid(row=0, column=1, padx=10, pady=5)
 
         Label(self.root, text="Reward (C, C):").grid(row=1, column=0, padx=10, pady=5)
@@ -605,7 +641,11 @@ class SimpleGUI:
         r = int(self.roundsEntry.get())
         # s.generate_random_rule_table()
         s.tournament_random(rounds=r)
-        s.plot_rule_table()
+
+        if s.genetic:
+            s.plot_rule_table()
+        else:
+            s.plot()
         # s.tournament_random(rounds=r)
         # s.tournament(rounds=r)
         # s.plot()
