@@ -35,7 +35,7 @@ class Strategy:
         self.cRandom,
         self.dRandom,
         self.moreNaive,
-        self.statisticalPlayer,
+        self.statisticalPlaykeyer,
         self.WSLS,
         self.Sneaky_Temptation,
         self.Anti_Tit_For_Tat,
@@ -186,10 +186,11 @@ class Strategy:
         and our opp. This is our key in our dictonary.
         """
         n = self.genetic_previous_n
+        length_hs_opp = len(self.historyOpp)
 
-        if len(self.historyOpp) < n:
-            response = self.equally_random()
-            print(f"Not enough history, using equally random {response}.")
+        if length_hs_opp < n:
+            response = rule_table[length_hs_opp]
+            print(f"Not enough history, using n value of rule table {response}.")
             return response
 
         own_moves = self.historyOwn[-n:]
@@ -276,6 +277,11 @@ class Strategy:
 
         rule_table = {combination: np.random.choice(states) for combination
                       in all_combinations}
+
+        # had to add this to make the rule table work without history
+        for i in range(self.genetic_previous_n):
+            rule_table[i] = np.random.choice(states)
+
         print(rule_table)
 
 
@@ -302,7 +308,7 @@ class Strategy:
 
                 scoreA, scoreB = self.playMatch(rule_table, strategy, rounds)
 
-                self.sumScores[rt] += scoreB
+                self.sumScores[rt] += scoreA
                 # Cooperation.
                 if scoreA == self.reward:
                     self.cooperation_count[rt] += 1
