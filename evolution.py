@@ -268,7 +268,6 @@ class Strategy:
             scoreA += ptsA
             scoreB += ptsB
 
-            # >>> Minimal change: record actual moves if indexA/indexB given
             if indexA is not None:
                 if moveA == 1:
                     self.cooperationCount[indexA] += 1
@@ -496,7 +495,7 @@ class Strategy:
         for i, name in enumerate(self.names):
             print(f"{name}: {reliationRate[i]*100:.2f}%")
 
-        # Collect data for plotting
+        # Collect data for plotting and sort by average score
         data = list(
             zip(self.names, self.avg, self.lowest, self.highest, barColors)
         )
@@ -511,7 +510,6 @@ class Strategy:
         xAvg = np.arange(len(sortedNames))
         width = 0.32
 
-        # Balken voor de gemiddelde scores
         bars1 = ax1.bar(
             xAvg - width / 2, sortedAvg, width,
             label='Average', color=sortedColors
@@ -531,7 +529,7 @@ class Strategy:
         ax1.set_xticklabels(sortedNames, rotation=45)
         ax1.legend()
 
-        # Bepalen van top 5 mutual scores
+        # Deciding the top 5 mutual scores.
         strategyPairs = []
         mutualScores = []
         mutualLowest = []
@@ -553,7 +551,7 @@ class Strategy:
         topPairs, topScores, topLow, topHigh = zip(*topFiveMutual)
         xMutual = np.arange(len(topPairs))
 
-        # Balken voor de top 5 mutual scores
+        # Bars for the top 5 mutual scores.
         bars2 = ax2.bar(
             xMutual, topScores, width,
             label='Mutual Score', color="blue"
