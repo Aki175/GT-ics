@@ -226,51 +226,63 @@ class Strategy:
 
 
 
-    def playMatch(self, stratA, stratB, rounds=10):
+    def playMatch(self, stratA, stratB, rounds=10, indexA=None, indexB=None):
         """
-        Plays rounds of two strategies.
-        Returns final (scoreA, scoreB).
+        Plays 'rounds' of two strategies stratA and stratB.
+        If indexA and indexB are not None, we increment self.cooperationCount
+        and self.retaliatingCount based on the actual moves (0 or 1).
         """
-        # Clear histories for each new match
         self.clearHistory()
-
         scoreA, scoreB = 0, 0
 
         for _ in range(rounds):
-            # Save original history
-            # state before a makes a move. Thus true own and opp history.
-            original_history_own = self.historyOwn.copy()
-            original_history_opp = self.historyOpp.copy()
+            # Save original history (for perspective)
+            originalOwn = self.historyOwn.copy()
+            originalOpp = self.historyOpp.copy()
 
-            # Get rule table's decision or strategy's decision
+            # Move A
             if self.genetic:
                 moveA = self.random_strat(stratA)
             else:
                 moveA = stratA()
 
-            # # Restore history for B's perspective and reverse own/opp roles
-            temp_own = self.historyOpp.copy()  # B's own moves are A's opponent moves
-            temp_opp = self.historyOwn.copy()  # B's opponent moves are A's own moves
-            self.historyOwn = temp_own
-            self.historyOpp = temp_opp
+            # Flip perspective for B
+            tempOwn = self.historyOpp.copy()
+            tempOpp = self.historyOwn.copy()
+            self.historyOwn = tempOwn
+            self.historyOpp = tempOpp
 
-            # Get move B (with B's perspective of history)
+            # Move B
             moveB = stratB()
 
-            # Restore original history
-            self.historyOwn = original_history_own
-            self.historyOpp = original_history_opp
+            # Restore original perspective
+            self.historyOwn = originalOwn
+            self.historyOpp = originalOpp
 
-            # Update history after both moves are calculated
+            # Append moves to histories
             self.historyOwn.append(moveA)
             self.historyOpp.append(moveB)
 
-            # Score them
+            # Scoring
             ptsA, ptsB = self.scoreRound(moveA, moveB)
             scoreA += ptsA
             scoreB += ptsB
 
+            # >>> Minimal change: record actual moves if indexA/indexB given
+            if indexA is not None:
+                if moveA == 1:
+                    self.cooperationCount[indexA] += 1
+                else:
+                    self.retaliatingCount[indexA] += 1
+
+            if indexB is not None:
+                if moveB == 1:
+                    self.cooperationCount[indexB] += 1
+                else:
+                    self.retaliatingCount[indexB] += 1
+
         return scoreA, scoreB
+
 
     def generate_random_rule_table(self):
         # since for every n you have 4 states
@@ -364,24 +376,17 @@ class Strategy:
         for i in range(n):
             for j in range(i + 1, n):
                 scoreI, scoreJ = self.playMatch(
-                    self.stratList[i], self.stratList[j], rounds
+                    self.stratList[i],
+                    self.stratList[j],
+                    rounds=rounds,
+                    indexA=i,
+                    indexB=j
                 )
                 mutualScore = scoreI + scoreJ
 
                 # Track total mutual score
                 self.mutualScoresPerStrat[i].append(mutualScore)
                 self.mutualScoresPerStrat[j].append(mutualScore)
-
-                # Cooperation & retaliation tracking
-                if scoreI == self.reward:
-                    self.cooperationCount[i] += 1
-                if scoreJ == self.reward:
-                    self.cooperationCount[j] += 1
-
-                if scoreI > scoreJ or scoreI == self.punishment:
-                    self.retaliatingCount[i] += 1
-                if scoreJ > scoreI or scoreJ == self.punishment:
-                    self.retaliatingCount[j] += 1
 
                 # Update i
                 if scoreI < self.lowest[i]:
@@ -466,13 +471,13 @@ class Strategy:
 
         n = len(self.names)
         cooperationRate = [
-            self.cooperationCount[i] / self.gamesPlayed[i]
+            (self.cooperationCount[i] / self.gamesPlayed[i]) / 10
             if self.gamesPlayed[i] > 0 else 0
             for i in range(n)
         ]
 
         reliationRate = [
-            self.retaliatingCount[i] / self.gamesPlayed[i]
+            (self.retaliatingCount[i] / self.gamesPlayed[i]) / 10
             if self.gamesPlayed[i] > 0 else 0
             for i in range(n)
         ]
@@ -481,17 +486,17 @@ class Strategy:
             for cRate in cooperationRate
         ]
 
-        # Print in terminal hoe vaak iedere strategie coöpereert
+        # Print in terminal how often each strategy cooperates
         print("Cooperation Rates:")
         for i, name in enumerate(self.names):
             print(f"{name}: {cooperationRate[i]*100:.2f}%")
 
-        # Print in terminal hoe vaak iedere strategie retalieert
+        # Print in terminal how often each strategy retaliates
         print("Reliation Rates:")
         for i, name in enumerate(self.names):
             print(f"{name}: {reliationRate[i]*100:.2f}%")
 
-        # Data verzamelen en sorteren op gemiddelde score
+        # Collect data for plotting
         data = list(
             zip(self.names, self.avg, self.lowest, self.highest, barColors)
         )
