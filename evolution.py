@@ -27,6 +27,7 @@ class Strategy:
         self.genetic = False
         self.genetic_previous_n = 1
         self.population_size = 0
+        self.round = 0
 
 
         self.stratList = [
@@ -194,9 +195,11 @@ class Strategy:
         """
         n = self.genetic_previous_n
 
-        if len(self.historyOpp) < n:
-            response = self.equally_random()
-            print(f"Not enough history, using equally random {response}.")
+        length_hs_opp = len(self.historyOpp)
+
+        if length_hs_opp < n:
+            response = rule_table[length_hs_opp]
+            print(f"Not enough history, using n value of rule table {response}.")
             return response
 
         own_moves = self.historyOwn[-n:]
@@ -226,7 +229,7 @@ class Strategy:
 
 
 
-    def playMatch(self, stratA, stratB, rounds=10, indexA=None, indexB=None):
+    def playMatch(self, stratA, stratB, indexA=None, indexB=None):
         """
         Plays 'rounds' of two strategies stratA and stratB.
         If indexA and indexB are not None, we increment self.cooperationCount
@@ -234,8 +237,9 @@ class Strategy:
         """
         self.clearHistory()
         scoreA, scoreB = 0, 0
+        print(indexA)
 
-        for _ in range(rounds):
+        for _ in range(self.round):
             # Save original history (for perspective)
             originalOwn = self.historyOwn.copy()
             originalOpp = self.historyOpp.copy()
@@ -268,17 +272,24 @@ class Strategy:
             scoreA += ptsA
             scoreB += ptsB
 
-            if indexA is not None:
-                if moveA == 1:
-                    self.cooperationCount[indexA] += 1
-                else:
-                    self.retaliatingCount[indexA] += 1
+            if self.genetic:
+                if indexA is not None:
+                    if moveA == 1:
+                        self.cooperation_count_random[indexA] += 1
+                    else:
+                        self.retaliation_count_random[indexA] += 1
+            else:
+                if indexA is not None:
+                    if moveA == 1:
+                        self.cooperationCount[indexA] += 1
+                    else:
+                        self.retaliatingCount[indexA] += 1
 
-            if indexB is not None:
-                if moveB == 1:
-                    self.cooperationCount[indexB] += 1
-                else:
-                    self.retaliatingCount[indexB] += 1
+                if indexB is not None:
+                    if moveB == 1:
+                        self.cooperationCount[indexB] += 1
+                    else:
+                        self.retaliatingCount[indexB] += 1
 
         return scoreA, scoreB
 
@@ -294,14 +305,47 @@ class Strategy:
 
         rule_table = {combination: np.random.choice(states) for combination
                       in all_combinations}
+
+                # had to add this to make the rule table work without history
+        for i in range(self.genetic_previous_n):
+            rule_table[i] = np.random.choice(states)
+
         print(rule_table)
 
 
         return rule_table
 
-    def tournament_random(self, rounds=10):
+    def divide_rule_table(self, rule_table, idx, num_divisions=6):
+        # Calculate total size based on formula 4^n
+        n = self.genetic_previous_n
+        total_combinations = 4**n
+
+        # Convert dictionary to list of items for easier slicing
+        rule_items = list(rule_table.items())
+
+        # Calculate division size
+        division_size = total_combinations // num_divisions
+
+        # Get the specific division for father
+        start_idx = idx * division_size
+        end_idx = min((idx + 1) * division_size, total_combinations)
+
+        # Create father rule table with the selected items
+        father_items = rule_items[start_idx:end_idx]
+        father = dict(father_items)
+
+        # Create mother rule table with the remaining items
+        mother_items = rule_items[:start_idx] + rule_items[end_idx:]
+        mother = dict(mother_items)
+
+        return father, mother
+
+
+    def tournament_random(self):
 
         self.sumScores = [0] * self.population_size
+        self.cooperation_count_random = [0] * self.population_size
+        self.retaliation_count_random = [0] * self.population_size
 
         rule_tables = [self.generate_random_rule_table()
                        for _ in range(self.population_size)]
@@ -315,21 +359,61 @@ class Strategy:
                 strategy = self.stratList[s]
                 print(f"Strategy {s}: {strategy}")
 
-                scoreA, scoreB = self.playMatch(rule_table, strategy, rounds)
+                scoreA, _ = self.playMatch(rule_table, strategy, rt)
 
                 self.sumScores[rt] += scoreA
 
+        pq = []
+        for i in range(len(rule_tables)):
+            heapq.heappush(pq, (-self.sumScores[i], i))
+
+        print("===== TOP-6 By Scores =====")
+        self.best_scores = []
+        self.topCount = min(6, len(rule_tables))
+        for rank in range(self.topCount):
+            best = heapq.heappop(pq)
+            idx = best[1] 
+            actual_score = -best[0]
+            print(f"{rank + 1}. Rule table {idx} with score={actual_score}")
+            print(f"   Rule table: {rule_tables[idx]}")
+            self.best_scores.append(idx)
+
+        # for idx in best_scores:
+        #     father, mother = divide_rule_table(self, rule_tables[best_idx], i)
+
     def plot_rule_table(self):
+        totalRoundsPerRT = self.round * len(self.stratList)
+
+        cooperationRate = []
+        for i in range(len(self.best_scores)):
+            coop = self.cooperation_count_random[i]
+            cRate = coop / totalRoundsPerRT
+            cooperationRate.append(cRate)
+
+        # Bepaal balk-kleuren
+        barColors = [
+            "green" if rate > 0.5 else "black"
+            for rate in cooperationRate
+        ]
+
         _, ax = plt.subplots(1, 1, figsize=(10, 6))
         x = np.arange(self.population_size)
         width = 0.32
 
-        # Plot for sume scores
-        _ = ax.bar(x - width / 2, self.sumScores, width, label='Sum Scores',
-        color='blue')
+        # Gebruik barColors in de plot
+        ax.bar(
+            x - width / 2,
+            self.sumScores,
+            width,
+            label='Sum Scores',
+            color=barColors
+        )
+        ax.set_title("Random rule table results")
+        ax.set_xlabel("Rule Table Index")
+        ax.set_ylabel("Sum of scores")
+
         plt.tight_layout()
         plt.show()
-
 
 
     def tournament(self, rounds=10):
@@ -371,7 +455,6 @@ class Strategy:
                 scoreI, scoreJ = self.playMatch(
                     self.stratList[i],
                     self.stratList[j],
-                    rounds=rounds,
                     indexA=i,
                     indexB=j
                 )
@@ -464,13 +547,13 @@ class Strategy:
 
         n = len(self.names)
         cooperationRate = [
-            (self.cooperationCount[i] / self.gamesPlayed[i]) / 10
+            (self.cooperationCount[i] / self.gamesPlayed[i]) / self.round
             if self.gamesPlayed[i] > 0 else 0
             for i in range(n)
         ]
 
         reliationRate = [
-            (self.retaliatingCount[i] / self.gamesPlayed[i]) / 10
+            (self.retaliatingCount[i] / self.gamesPlayed[i]) / self.round
             if self.gamesPlayed[i] > 0 else 0
             for i in range(n)
         ]
@@ -586,9 +669,6 @@ class Strategy:
         plt.tight_layout()
         plt.show()
 
-
-
-
 class SimpleGUI:
     """
     GUI with a 'Start Tournament' button that calls Strategy().tournament().
@@ -668,14 +748,15 @@ class SimpleGUI:
         s.population_size = int(self.PopSize.get())
 
 
-        r = int(self.roundsEntry.get())
+        # r = int(self.roundsEntry.get())
+        s.round = int(self.roundsEntry.get())
         # s.generate_random_rule_table()
 
         if s.genetic:
-            s.tournament_random(rounds=r)
+            s.tournament_random()
             s.plot_rule_table()
         else:
-            s.tournament(rounds=r)
+            s.tournament()
             s.plot()
         # s.tournament_random(rounds=r)
         # s.tournament(rounds=r)
