@@ -206,8 +206,8 @@ class Strategy:
         own_moves = self.historyOwn[-n:]
         opp_moves = self.historyOpp[-n:]
         combination_key = tuple(zip(own_moves, opp_moves))
-        print(f"Combination key: {combination_key}")
-        print(rule_table[combination_key])
+        # print(f"Combination key: {combination_key}")
+        # print(rule_table[combination_key])
         return rule_table[combination_key]
 
 
@@ -321,27 +321,18 @@ class Strategy:
         Creates a child rule table by taking 50% of the rules from the father and 50% from the mother.
         If the total number of rules is odd, the extra rule is taken from the father.
         """
-        n = self.genetic_previous_n
         size_rule_table = len(father)
 
         father_items = list(father.items())
         mother_items = list(mother.items())
 
         half_size = size_rule_table // 2
-        extra_from_father = size_rule_table % 2
 
         father_part = father_items[:half_size]
 
-        mother_part = mother_items[-half_size:]
-
-
+        mother_part = mother_items[half_size:]
 
         child_items = father_part + mother_part
-
-        if extra_from_father:
-            child_items.append(father_items[-1])
-
-
 
         print(child_items)
 
@@ -363,48 +354,69 @@ class Strategy:
 
 
     def tournament_random(self):
-
-        self.sumScores = [0] * self.population_size
-        self.cooperation_count_random = [0] * self.population_size
-        self.retaliation_count_random = [0] * self.population_size
-
+        self.average_score = []
         rule_tables = [self.generate_random_rule_table()
                        for _ in range(self.population_size)]
 
         # Every rule table plays against every strategy
-        # for _ in range(self.generations):
-        for rt in range(len(rule_tables)):
-            rule_table = rule_tables[rt]
-            print(f"Rule table {rt}: {rule_table}")
+        for gen in range(self.generations):
+            print(f"\n===== Generation {gen+1} =====")
 
-            for s in range(len(self.stratList)):
-                strategy = self.stratList[s]
-                print(f"Strategy {s}: {strategy}")
+            self.sumScores = [0] * len(rule_tables)
+            self.cooperation_count_random = [0] * len(rule_tables)
+            self.retaliation_count_random = [0] * len(rule_tables)
 
-                scoreA, _ = self.playMatch(rule_table, strategy, rt)
+            for rt in range(len(rule_tables)):
+                rule_table = rule_tables[rt]
+                print(f"Rule table {rt}: {rule_table}")
 
-                self.sumScores[rt] += scoreA
+                for s in range(len(self.stratList)):
+                    strategy = self.stratList[s]
+                    print(f"Strategy {s}: {strategy}")
 
-        pq = []
-        for i in range(len(rule_tables)):
-            heapq.heappush(pq, (-self.sumScores[i], i))
+                    scoreA, _ = self.playMatch(rule_table, strategy, rt)
 
-        print("===== TOP-6 By Scores =====")
-        self.best_scores = []
-        self.topCount = min(6, len(rule_tables))
-        for rank in range(self.topCount):
-            best = heapq.heappop(pq)
-            idx = best[1]
-            actual_score = -best[0]
-            print(f"{rank + 1}. Rule table {idx} with score={actual_score}")
-            print(f"   Rule table: {rule_tables[idx]}")
-            self.best_scores.append(idx)
+                    self.sumScores[rt] += scoreA
 
-        for i in range(0, len(self.best_scores) - 1, 2):
-            father_idx = self.best_scores[i]
-            mother_idx = self.best_scores[i + 1]  # Use next top parent from best_scores
-            child = self.divide_rule_table(rule_tables[father_idx], rule_tables[mother_idx])
-            rule_tables.append(child)
+            avg = sum(self.sumScores) / len(self.sumScores)
+            self.average_score.append(avg)
+
+            scored_tables = [(self.sumScores[i], i) for i in range(len(rule_tables))]
+            scored_tables.sort(reverse=True)
+
+            print("\n===== TOP-6 By Scores =====")
+            self.best_scores = []
+            self.topCount = min(6, len(rule_tables))
+
+            for rank in range(self.topCount):
+                score, idx = scored_tables[rank]
+                print(f"{rank + 1}. Rule table {idx} with score={score}")
+                print(f" Rule table: {rule_tables[idx]}")
+                self.best_scores.append(idx)
+
+            # Skip reproduction on the last generation
+            if gen < self.generations - 1:
+                worst_performers = [idx for _, idx in scored_tables[-3:]]
+                print("\n===== REMOVING WORST 3 =====")
+                for idx in worst_performers:
+                    print(f"Removing rule table {idx} with score={self.sumScores[idx]}")
+
+                new_rule_tables = []
+                for i in range(0, len(self.best_scores) - 1, 2):
+                    father_idx = self.best_scores[i]
+                    mother_idx = self.best_scores[i + 1]
+                    child = self.divide_rule_table(rule_tables[father_idx], rule_tables[mother_idx])
+                    new_rule_tables.append(child)
+                    print(f"Created child from parents {father_idx} and {mother_idx}")
+
+                next_generation = []
+                for i, rt in enumerate(rule_tables):
+                    if i not in worst_performers:
+                        next_generation.append(rt)
+
+                next_generation.extend(new_rule_tables)
+                rule_tables = next_generation
+
 
     def plot_rule_table(self):
         totalRoundsPerRT = self.round * len(self.stratList)
@@ -421,21 +433,33 @@ class Strategy:
             for rate in cooperationRate
         ]
 
-        _, ax = plt.subplots(1, 1, figsize=(10, 6))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         x = np.arange(self.population_size)
-        width = 0.32
+        width = 0.6
 
         # Gebruik barColors in de plot
-        ax.bar(
+        ax1.bar(
             x - width / 2,
             self.sumScores,
             width,
             label='Sum Scores',
             color=barColors
         )
-        ax.set_title("Random rule table results")
-        ax.set_xlabel("Rule Table Index")
-        ax.set_ylabel("Sum of scores")
+        ax1.set_title(f"Random rule table results with {self.generations} "
+                      f"generations and looking at {self.genetic_previous_n} "
+                      f" previous Ns ")
+        ax1.set_xlabel("Rule Table Index")
+        ax1.set_ylabel("Sum of scores")
+
+        generations = np.arange(1, len(self.average_score) + 1)
+        ax2.plot(generations, self.average_score, marker='o', linestyle='-',
+                 color='blue')
+        ax2.set_title("Average Score Across Generations")
+        ax2.set_xlabel("Generation")
+        ax2.set_ylabel("Average Score")
+        ax2.grid(True, linestyle='--', alpha=0.7)
+
+        ax2.set_xticks(generations)
 
         plt.tight_layout()
         plt.show()
