@@ -10,6 +10,8 @@ from tkinter import Tk, Label, Entry, Button, Checkbutton, BooleanVar
 
 # General notes: cooperate = 1, defect = 0.
 
+
+
 class Strategy:
     """
     This class contains multiple strategies and the methods to let them
@@ -33,21 +35,23 @@ class Strategy:
 
         self.stratList = [
         self.titForTat,
-        self.equally_random,
+        self.random,
         self.cRandom,
         self.dRandom,
         self.moreNaive,
         self.WSLS,
-        self.Sneaky_Temptation,
-        self.Anti_Tit_For_Tat,
+        self.Sneaky,
+        self.Anti_TFT,
         self.Grim,
-        self.Adaptive_Gradual_TFT,
+        self.AG_TFT,
         self.hopeful,
         self.jew,
-        self.statisticalPlayer,
+        self.smart_play,
+        self.Lurer,
+        self.Exploiter
         ]
 
-        np.random.seed(42)
+        np.random.seed(47)
 
 
 
@@ -68,7 +72,7 @@ class Strategy:
             return 1
         return self.historyOpp[-1]
 
-    def equally_random(self):
+    def random(self):
         """
         Randomly choose 0 or 1 with 50% chance.
         """
@@ -95,7 +99,7 @@ class Strategy:
                 return 0
         return 1
 
-    def statisticalPlayer(self):
+    def smart_play(self):
         """
         If the opponent has defected more than half the time so far,
         we defect. Otherwise we cooperate.
@@ -126,7 +130,7 @@ class Strategy:
         # If we lose we switch
         return (lst_own + 1) % 2
 
-    def Sneaky_Temptation(self):
+    def Sneaky(self):
         '''
         always cooperate but every third round deflect
         '''
@@ -138,7 +142,7 @@ class Strategy:
 
         return 1
 
-    def Anti_Tit_For_Tat(self):
+    def Anti_TFT(self):
         '''
         reverse of tit for that
         '''
@@ -160,7 +164,7 @@ class Strategy:
 
         return 1
 
-    def Adaptive_Gradual_TFT(self):
+    def AG_TFT(self):
         '''
         It always cooperates only after the oppenent deflect 2 times
         than it deflect always since it has a grudge but it is forgiven
@@ -194,6 +198,37 @@ class Strategy:
         """
         return 0
 
+
+    def Lurer(self):
+        """
+        Always defects, but if opponent ever cooperates, will occasionally
+        cooperate for one round to try to exploit them again.
+        """
+        if len(self.historyOpp) == 0:
+            return 0
+
+        if self.historyOpp[-1] == 1:
+            return np.random.choice([0, 1], p=[0.8, 0.2])
+
+        return 0
+
+    def Exploiter(self):
+        """
+        Starts with defection. If opponent cooperates after being defected against,
+        identifies them as exploitable and continues defecting. Only cooperates if
+        opponent defects twice in a row to try to break a mutual defection cycle.
+        """
+        if len(self.historyOpp) == 0:
+            return 0
+
+        if len(self.historyOpp) >= 2 and self.historyOpp[-1] == 1 and self.historyOwn[-1] == 0:
+            return 0
+
+        if len(self.historyOpp) >= 2 and self.historyOpp[-1] == 0 and self.historyOpp[-2] == 0:
+            return 1
+
+        return 0
+
     def random_strat(self, rule_table):
 
         """
@@ -216,6 +251,7 @@ class Strategy:
         # print(f"Combination key: {combination_key}")
         # print(rule_table[combination_key])
         return rule_table[combination_key]
+
 
 
     # Match / Round logic
@@ -448,6 +484,18 @@ class Strategy:
             for rate in cooperationRate
         ]
 
+        # barColors = []
+        # for rate in cooperationRate:
+        #     if rate <= 0.25:
+        #         color = "#8B0000"       # Dark red (0-25%)
+        #     elif rate <= 0.50:
+        #         color = "#FF4500"       # Orange-red (25-50%)
+        #     elif rate <= 0.75:
+        #         color = "#FFFF00"       # Yellow-green (50-75%)
+        #     else:
+        #         color = "#008000"       # Green (75-100%)
+        #     barColors.append(color)
+
         _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         x = np.arange(self.population_size)
         width = 0.6
@@ -490,18 +538,20 @@ class Strategy:
 
         self.names = [
             "Tit-for-Tat",
-            "Equally Random",
+            "Random",
             "C-Random",
             "D-Random",
             "More Naive",
             "WSLS",
-            "Sneaky_Temptation",
-            "Anti_Tit_For_Tat",
+            "Sneaky",
+            "Anti TFT",
             "Grim",
-            "Adaptive_Gradual_TFT",
+            "AG_TFT",
             "Hopeful",
             "Jew",
-            "Statistical Player"
+            "Smart Play",
+            "Lurer",
+            "Exploiter"
         ]
 
         self.lowest = [9999999] * n
@@ -776,7 +826,7 @@ class SimpleGUI:
 
         Label(self.root, text="Previous Moves (N):").grid(row=6, column=0, padx=10, pady=5)
         self.nEntry = Entry(self.root)
-        self.nEntry.insert(0, "1")  # Default N=1
+        self.nEntry.insert(0, "1")
         self.nEntry.grid(row=6, column=1, padx=10, pady=5)
 
         Label(self.root, text="Population size (min 6)").grid(row=7, column=0, padx=10, pady=5)
@@ -790,14 +840,27 @@ class SimpleGUI:
         self.GenSize.grid(row=8, column=1, padx=10, pady=5)
 
 
+        Label(self.root, text="Choose Environment (nothing selected is both):").grid(row=9, column=0, padx=10, pady=5)
+
+        self.niceEnvVar = BooleanVar()
+        self.selfishEnvVar = BooleanVar()
+
+        self.niceEnvVar.trace_add("write", lambda *args: self.selfishEnvVar.set(False) if self.niceEnvVar.get() else None)
+        self.selfishEnvVar.trace_add("write", lambda *args: self.niceEnvVar.set(False) if self.selfishEnvVar.get() else None)
+
+        self.niceCheck = Checkbutton(self.root, text="Nice Environment", variable=self.niceEnvVar)
+        self.niceCheck.grid(row=9, column=1, padx=5, pady=5, sticky="w")
+
+        self.selfishCheck = Checkbutton(self.root, text="Selfish Environment", variable=self.selfishEnvVar)
+        self.selfishCheck.grid(row=9, column=2, padx=5, pady=5, sticky="w")
 
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=9, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=10, column=0, columnspan=2, pady=10)
 
         Button(self.root, text="Exit", command=self.root.quit)\
-            .grid(row=10, column=0, columnspan=2, pady=10)
+            .grid(row=11, column=0, columnspan=2, pady=10)
 
 
     def startTournament(self):
@@ -820,7 +883,36 @@ class SimpleGUI:
 
         s.round = int(self.roundsEntry.get())
 
+
         if s.genetic:
+
+            nice_strategies = [
+                s.titForTat,
+                s.hopeful,
+                s.WSLS,
+                s.smart_play,
+                s.cRandom,
+                s.Anti_TFT,
+                s.random,
+                s.moreNaive,
+                s.Grim,
+                s.AG_TFT
+            ]
+
+            selfish_strategies = [
+                s.jew,
+                s.Grim,
+                s.Sneaky,
+                s.dRandom,
+                s.Anti_TFT,
+                s.random,
+                s.Lurer,
+                s.Exploiter
+            ]
+            if self.niceEnvVar.get():
+                s.stratList = nice_strategies
+            elif self.selfishEnvVar.get():
+                s.stratList = selfish_strategies
             s.tournament_random()
             s.plot_rule_table()
         else:
