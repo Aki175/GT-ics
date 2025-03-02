@@ -37,13 +37,14 @@ class Strategy:
         self.cRandom,
         self.dRandom,
         self.moreNaive,
-        self.statisticalPlayer,
         self.WSLS,
         self.Sneaky_Temptation,
         self.Anti_Tit_For_Tat,
         self.Grim,
         self.Adaptive_Gradual_TFT,
-        self.hopeful
+        self.hopeful,
+        self.jew,
+        self.statisticalPlayer,
         ]
 
         np.random.seed(42)
@@ -187,6 +188,12 @@ class Strategy:
         """
         return 1
 
+    def jew(self):
+        """
+        Always defect
+        """
+        return 0
+
     def random_strat(self, rule_table):
 
         """
@@ -318,20 +325,20 @@ class Strategy:
 
     def divide_rule_table(self, father, mother):
         """
-        Creates a child rule table by taking 50% of the rules from the father and 50% from the mother.
-        If the total number of rules is odd, the extra rule is taken from the father.
+        Creates a child rule table by taking 50% of the rules from the father
+        and 50% from the mother. If the total number of rules is odd, the extra
+        rule is taken from the mother.
         """
         size_rule_table = len(father)
 
         father_items = list(father.items())
         mother_items = list(mother.items())
 
+        # Divide the rule table in half, rounding down.
         half_size = size_rule_table // 2
 
         father_part = father_items[:half_size]
-
         mother_part = mother_items[half_size:]
-
         child_items = father_part + mother_part
 
         print(child_items)
@@ -343,6 +350,7 @@ class Strategy:
         if  np.random.rand() >= 0.5:
             mutation_index = np.random.randint(0, len(child_items))
 
+            # Change the value of the mutation index to add mutation.
             key_to_mutate = list(child.keys())[mutation_index]
             child[key_to_mutate] = (child[key_to_mutate] + 1 ) % 2
             print(f"Mutation applied at {key_to_mutate}, new value: {child[key_to_mutate]}")
@@ -350,8 +358,6 @@ class Strategy:
         print(child)
 
         return child
-
-
 
     def tournament_random(self):
         self.average_score = []
@@ -366,6 +372,7 @@ class Strategy:
             self.cooperation_count_random = [0] * len(rule_tables)
             self.retaliation_count_random = [0] * len(rule_tables)
 
+            # Play matches where everey rule table plays against every strategy.
             for rt in range(len(rule_tables)):
                 rule_table = rule_tables[rt]
                 print(f"Rule table {rt}: {rule_table}")
@@ -378,9 +385,12 @@ class Strategy:
 
                     self.sumScores[rt] += scoreA
 
+            # Get the average of all the strategies together and add to the list
+            # of averages for each generation.
             avg = sum(self.sumScores) / len(self.sumScores)
             self.average_score.append(avg)
 
+            # Put the generation scores in a list of tuples and sort them.
             scored_tables = [(self.sumScores[i], i) for i in range(len(rule_tables))]
             scored_tables.sort(reverse=True)
 
@@ -388,27 +398,33 @@ class Strategy:
             self.best_scores = []
             self.topCount = min(6, len(rule_tables))
 
+            # Put the indexes of the best rule tables in a list.
             for rank in range(self.topCount):
                 score, idx = scored_tables[rank]
                 print(f"{rank + 1}. Rule table {idx} with score={score}")
                 print(f" Rule table: {rule_tables[idx]}")
                 self.best_scores.append(idx)
 
-            # Skip reproduction on the last generation
+            # Skip reproduction on the last generation. Add the worst 3 to the
+            # list of worst performers.
             if gen < self.generations - 1:
                 worst_performers = [idx for _, idx in scored_tables[-3:]]
                 print("\n===== REMOVING WORST 3 =====")
                 for idx in worst_performers:
-                    print(f"Removing rule table {idx} with score={self.sumScores[idx]}")
+                    print(f"Removing rule table {idx} with "
+                          f"score={self.sumScores[idx]}")
 
                 new_rule_tables = []
                 for i in range(0, len(self.best_scores) - 1, 2):
                     father_idx = self.best_scores[i]
                     mother_idx = self.best_scores[i + 1]
-                    child = self.divide_rule_table(rule_tables[father_idx], rule_tables[mother_idx])
+                    child = self.divide_rule_table(rule_tables[father_idx],
+                    rule_tables[mother_idx])
                     new_rule_tables.append(child)
-                    print(f"Created child from parents {father_idx} and {mother_idx}")
+                    print(f"Created child from parents {father_idx} and "
+                          f"{mother_idx}")
 
+                # Create the next generation by not adding the worst performers.
                 next_generation = []
                 for i, rt in enumerate(rule_tables):
                     if i not in worst_performers:
@@ -427,17 +443,15 @@ class Strategy:
             cRate = coop / totalRoundsPerRT
             cooperationRate.append(cRate)
 
-        # Bepaal balk-kleuren
         barColors = [
             "green" if rate > 0.5 else "black"
             for rate in cooperationRate
         ]
 
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+        _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         x = np.arange(self.population_size)
         width = 0.6
 
-        # Gebruik barColors in de plot
         ax1.bar(
             x - width / 2,
             self.sumScores,
@@ -465,7 +479,7 @@ class Strategy:
         plt.show()
 
 
-    def tournament(self, rounds=10):
+    def tournament(self):
         """
         Runs a round-robin among the fixed strategies in stratList.
         Gathers and prints results, including top-5 by mutual points.
@@ -480,13 +494,14 @@ class Strategy:
             "C-Random",
             "D-Random",
             "More Naive",
-            "Statistical Player",
             "WSLS",
             "Sneaky_Temptation",
             "Anti_Tit_For_Tat",
             "Grim",
             "Adaptive_Gradual_TFT",
-            "Hopeful"
+            "Hopeful",
+            "Jew",
+            "Statistical Player"
         ]
 
         self.lowest = [9999999] * n
@@ -636,7 +651,7 @@ class Strategy:
         xAvg = np.arange(len(sortedNames))
         width = 0.32
 
-        bars1 = ax1.bar(
+        _ = ax1.bar(
             xAvg - width / 2, sortedAvg, width,
             label='Average', color=sortedColors
         )
@@ -704,7 +719,7 @@ class Strategy:
         sortedNamesW, sortedWins, sortedColorsW = zip(*winData)
         xWins = np.arange(len(sortedNamesW))
 
-        bars3 = ax3.bar(
+        _ = ax3.bar(
             xWins, sortedWins, width,
             label='Wins', color=sortedColorsW
         )
@@ -764,7 +779,7 @@ class SimpleGUI:
         self.nEntry.insert(0, "1")  # Default N=1
         self.nEntry.grid(row=6, column=1, padx=10, pady=5)
 
-        Label(self.root, text="Population size").grid(row=7, column=0, padx=10, pady=5)
+        Label(self.root, text="Population size (min 6)").grid(row=7, column=0, padx=10, pady=5)
         self.PopSize = Entry(self.root)
         self.PopSize.insert(0, "20")
         self.PopSize.grid(row=7, column=1, padx=10, pady=5)
@@ -803,10 +818,7 @@ class SimpleGUI:
 
         s.generations = int(self.GenSize.get())
 
-
-        # r = int(self.roundsEntry.get())
         s.round = int(self.roundsEntry.get())
-        # s.generate_random_rule_table()
 
         if s.genetic:
             s.tournament_random()
@@ -814,9 +826,6 @@ class SimpleGUI:
         else:
             s.tournament()
             s.plot()
-        # s.tournament_random(rounds=r)
-        # s.tournament(rounds=r)
-        # s.plot()
 
     def start(self):
         self.root.mainloop()
