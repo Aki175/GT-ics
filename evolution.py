@@ -499,11 +499,11 @@ class Strategy:
 
         barColors = []
         for rate in cooperationRate:
-            if rate <= 0.25:
+            if rate <= 0.4:
                 color = "#8B0000"       # Dark red (0-25%)
             elif rate <= 0.50:
                 color = "#FF4500"       # Orange-red (25-50%)
-            elif rate <= 0.75:
+            elif rate <= 0.6:
                 color = "#FFFF00"       # Yellow-green (50-75%)
             else:
                 color = "#008000"       # Green (75-100%)
@@ -692,11 +692,11 @@ class Strategy:
 
         barColors = []
         for rate in cooperationRate:
-            if rate <= 0.25:
+            if rate <= 0.4:
                 color = "#8B0000"       # Dark red (0-25%)
             elif rate <= 0.50:
                 color = "#FF4500"       # Orange-red (25-50%)
-            elif rate <= 0.75:
+            elif rate <= 0.6:
                 color = "#FFFF00"       # Yellow-green (50-75%)
             else:
                 color = "#008000"       # Green (75-100%)
