@@ -46,6 +46,7 @@ class Strategy:
         self.AG_TFT,
         self.hopeful,
         self.jew,
+        self.Angry_Sneaky,
         self.smart_play,
         self.Lurer,
         self.Exploiter
@@ -196,6 +197,18 @@ class Strategy:
         """
         Always defect
         """
+        return 0
+
+    def Angry_Sneaky(self):
+        '''
+        always deflects but every third round cooperates
+        '''
+
+        if len(self.historyOpp) == 0:
+            return 0
+        if (len(self.historyOwn) + 1) % 3 == 0:
+            return 1
+
         return 0
 
 
@@ -549,6 +562,7 @@ class Strategy:
             "AG_TFT",
             "Hopeful",
             "Jew",
+            "Angry_Sneaky",
             "Smart Play",
             "Lurer",
             "Exploiter"
@@ -901,6 +915,7 @@ class SimpleGUI:
 
             selfish_strategies = [
                 s.jew,
+                s.Angry_Sneaky,
                 s.Grim,
                 s.Sneaky,
                 s.dRandom,
