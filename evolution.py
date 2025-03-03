@@ -45,7 +45,7 @@ class Strategy:
         self.Grim,
         self.AG_TFT,
         self.hopeful,
-        self.jew,
+        self.defector,
         self.Angry_Sneaky,
         self.smart_play,
         self.Lurer,
@@ -193,7 +193,7 @@ class Strategy:
         """
         return 1
 
-    def jew(self):
+    def defector(self):
         """
         Always defect
         """
@@ -561,7 +561,7 @@ class Strategy:
             "Grim",
             "AG_TFT",
             "Hopeful",
-            "Jew",
+            "Defector",
             "Angry_Sneaky",
             "Smart Play",
             "Lurer",
@@ -926,7 +926,7 @@ class SimpleGUI:
             ]
 
             selfish_strategies = [
-                s.jew,
+                s.defector,
                 s.Angry_Sneaky,
                 s.Grim,
                 s.Sneaky,
