@@ -685,10 +685,22 @@ class Strategy:
             if self.gamesPlayed[i] > 0 else 0
             for i in range(n)
         ]
-        barColors = [
-            "green" if cRate > 0.5 else "black"
-            for cRate in cooperationRate
-        ]
+        # barColors = [
+        #     "green" if cRate > 0.5 else "black"
+        #     for cRate in cooperationRate
+        # ]
+
+        barColors = []
+        for rate in cooperationRate:
+            if rate <= 0.25:
+                color = "#8B0000"       # Dark red (0-25%)
+            elif rate <= 0.50:
+                color = "#FF4500"       # Orange-red (25-50%)
+            elif rate <= 0.75:
+                color = "#FFFF00"       # Yellow-green (50-75%)
+            else:
+                color = "#008000"       # Green (75-100%)
+            barColors.append(color)
 
         # Print in terminal how often each strategy cooperates
         print("Cooperation Rates:")
