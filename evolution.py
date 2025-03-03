@@ -395,8 +395,8 @@ class Strategy:
         child = dict(child_items)
         print(child)
 
-        # if the mutation prob is 50%
-        if  np.random.rand() >= 0.5:
+        # if the mutation prob is 0.01
+        if np.random.rand() < 0.01:
             mutation_index = np.random.randint(0, len(child_items))
 
             # Change the value of the mutation index to add mutation.
@@ -445,7 +445,7 @@ class Strategy:
 
             print("\n===== TOP-6 By Scores =====")
             self.best_scores = []
-            self.topCount = min(6, len(rule_tables))
+            self.topCount = min(10, len(rule_tables))
 
             # Put the indexes of the best rule tables in a list.
             for rank in range(self.topCount):
@@ -457,7 +457,7 @@ class Strategy:
             # Skip reproduction on the last generation. Add the worst 3 to the
             # list of worst performers.
             if gen < self.generations - 1:
-                worst_performers = [idx for _, idx in scored_tables[-3:]]
+                worst_performers = [idx for _, idx in scored_tables[-5:]]
                 print("\n===== REMOVING WORST 3 =====")
                 for idx in worst_performers:
                     print(f"Removing rule table {idx} with "
