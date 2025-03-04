@@ -52,6 +52,9 @@ class Strategy:
         self.Exploiter
         ]
 
+        self.roundWins = [0] * len(self.stratList)
+
+
         np.random.seed(47)
 
 
@@ -295,6 +298,8 @@ class Strategy:
         self.clearHistory()
         scoreA, scoreB = 0, 0
         print(indexA)
+        round_winsA = 0
+        round_winsB = 0
 
         for _ in range(self.round):
             # Save original history (for perspective)
@@ -329,6 +334,16 @@ class Strategy:
             scoreA += ptsA
             scoreB += ptsB
 
+            # if ptsA >= ptsB:
+            #     round_winsA += 1
+            # elif ptsB >= ptsA:
+            #     round_winsB += 1
+
+            if ptsA == self.reward or self.temptation:
+                round_winsA += 1
+            elif ptsB == self.reward or self.temptation:
+                round_winsB += 1
+
             if self.genetic:
                 if indexA is not None:
                     if moveA == 1:
@@ -348,7 +363,7 @@ class Strategy:
                     else:
                         self.retaliatingCount[indexB] += 1
 
-        return scoreA, scoreB
+        return scoreA, scoreB, round_winsA, round_winsB
 
 
     def generate_random_rule_table(self):
@@ -580,7 +595,7 @@ class Strategy:
 
         for i in range(n):
             for j in range(i + 1, n):
-                scoreI, scoreJ = self.playMatch(
+                scoreI, scoreJ, roundWinsI, roundWinsJ = self.playMatch(
                     self.stratList[i],
                     self.stratList[j],
                     indexA=i,
@@ -619,11 +634,9 @@ class Strategy:
                 if mutualScore > self.highestMutual[j]:
                     self.highestMutual[j] = mutualScore
 
-                # Who wins
-                if scoreI >= scoreJ:
-                    self.wins[i] += 1
-                else:
-                    self.wins[j] += 1
+                self.roundWins[i] += roundWinsI
+                self.roundWins[j] += roundWinsJ
+
 
         # Compute average scores
         self.avg = [0] * n
@@ -790,7 +803,7 @@ class Strategy:
         ax2.legend()
 
         # Balken voor aantal wins
-        winData = list(zip(self.names, self.wins, barColors))
+        winData = list(zip(self.names, self.roundWins, barColors))
         winData.sort(key=lambda x: x[1], reverse=True)
         sortedNamesW, sortedWins, sortedColorsW = zip(*winData)
         xWins = np.arange(len(sortedNamesW))
