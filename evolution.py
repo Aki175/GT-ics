@@ -340,9 +340,9 @@ class Strategy:
             # elif ptsB >= ptsA:
             #     round_winsB += 1
 
-            if ptsA == self.reward or self.temptation:
+            if ptsA == self.reward or ptsA == self.temptation:
                 round_winsA += 1
-            elif ptsB == self.reward or self.temptation:
+            elif ptsB == self.reward or ptsB == self.temptation:
                 round_winsB += 1
 
             if self.genetic:
@@ -719,11 +719,7 @@ class Strategy:
         data.sort(key=lambda x: x[1], reverse=True)
         sortedNames, sortedAvg, sortedLow, sortedHigh, sortedCols = zip(*data)
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 6))
-        fig.suptitle(
-            "Green is mostly cooperation, black is mostly defection",
-            fontsize=14
-        )
+        _, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 6))
 
         xPos = np.arange(len(sortedNames))
         width = 0.32
@@ -933,8 +929,9 @@ class SimpleGUI:
                 s.dRandom,
                 s.Anti_TFT,
                 s.random,
-                s.Lurer,
-                s.Exploiter
+                s.Exploiter,
+                s.Lurer
+
             ]
             if self.niceEnvVar.get():
                 s.stratList = nice_strategies
