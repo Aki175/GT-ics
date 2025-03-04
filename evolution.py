@@ -678,72 +678,61 @@ class Strategy:
 
     def plot(self):
         """
-        Plots the results of the tournament with three subplots:
-        average scores, top mutual scores, and total wins.
-        Bars are green if the strategy cooperates > 50% of the time,
-        else black.
+        Plots the results of the tournament with three subplots: average scores,
+        top mutual scores, and total wins. Bars are colored by cooperation rate.
         """
 
-        n = len(self.names)
-        cooperationRate = [
+        nStrategies = len(self.names)
+        coopRate = [
             (self.cooperationCount[i] / self.gamesPlayed[i]) / self.round
             if self.gamesPlayed[i] > 0 else 0
-            for i in range(n)
+            for i in range(nStrategies)
         ]
-
-        reliationRate = [
+        retalRate = [
             (self.retaliatingCount[i] / self.gamesPlayed[i]) / self.round
             if self.gamesPlayed[i] > 0 else 0
-            for i in range(n)
+            for i in range(nStrategies)
         ]
-        # barColors = [
-        #     "green" if cRate > 0.5 else "black"
-        #     for cRate in cooperationRate
-        # ]
-
         barColors = []
-        for rate in cooperationRate:
+        for rate in coopRate:
             if rate <= 0.4:
-                color = "#8B0000"       # Dark red (0-25%)
+                color = "#8B0000"
             elif rate <= 0.50:
-                color = "#FF4500"       # Orange-red (25-50%)
+                color = "#FF4500"
             elif rate <= 0.6:
-                color = "#FFFF00"       # Yellow-green (50-75%)
+                color = "#FFFF00"
             else:
-                color = "#008000"       # Green (75-100%)
+                color = "#008000"
             barColors.append(color)
 
-        # Print in terminal how often each strategy cooperates
         print("Cooperation Rates:")
         for i, name in enumerate(self.names):
-            print(f"{name}: {cooperationRate[i]*100:.2f}%")
+            print(f"{name}: {coopRate[i]*100:.2f}%")
 
-        # Print in terminal how often each strategy retaliates
         print("Reliation Rates:")
         for i, name in enumerate(self.names):
-            print(f"{name}: {reliationRate[i]*100:.2f}%")
+            print(f"{name}: {retalRate[i]*100:.2f}%")
 
-        # Collect data for plotting and sort by average score
         data = list(
             zip(self.names, self.avg, self.lowest, self.highest, barColors)
         )
         data.sort(key=lambda x: x[1], reverse=True)
-        sortedNames, sortedAvg, sortedLow, sortedHigh, sortedColors = zip(*data)
+        sortedNames, sortedAvg, sortedLow, sortedHigh, sortedCols = zip(*data)
 
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 6))
         fig.suptitle(
             "Green is mostly cooperation, black is mostly defection",
             fontsize=14
         )
-        xAvg = np.arange(len(sortedNames))
+
+        xPos = np.arange(len(sortedNames))
         width = 0.32
 
         _ = ax1.bar(
-            xAvg - width / 2, sortedAvg, width,
-            label='Average', color=sortedColors
+            xPos, sortedAvg, width, label='Average', color=sortedCols
         )
         ax1.errorbar(
-            xAvg - width / 2, sortedAvg,
+            xPos, sortedAvg,
             yerr=[
                 np.subtract(sortedAvg, sortedLow),
                 np.subtract(sortedHigh, sortedAvg)
@@ -753,72 +742,65 @@ class Strategy:
         ax1.set_xlabel('Strategies')
         ax1.set_ylabel('Scores')
         ax1.set_title('Minimal, maximal, and average scores per strategy')
-        ax1.set_xticks(xAvg - width / 2)
-        ax1.set_xticklabels(sortedNames, rotation=45)
+        ax1.set_xticks(xPos)
+        ax1.set_xticklabels(sortedNames, rotation=45, ha='right')
         ax1.legend()
 
-        # Deciding the top 5 mutual scores.
         strategyPairs = []
         mutualScores = []
-        mutualLowest = []
-        mutualHighest = []
+        mutualLow = []
+        mutualHigh = []
         for i in range(len(self.names)):
             for j in range(i + 1, len(self.names)):
                 strategyPairs.append(f"{self.names[i]} vs {self.names[j]}")
                 score = self.mutualScoresPerStrat[i][j - i - 1]
                 mutualScores.append(score)
-                mutualLowest.append(self.lowestMutual[i])
-                mutualHighest.append(self.highestMutual[i])
+                mutualLow.append(self.lowestMutual[i])
+                mutualHigh.append(self.highestMutual[i])
 
-        mutualData = list(
-            zip(strategyPairs, mutualScores, mutualLowest, mutualHighest)
-        )
+        mutualData = list(zip(strategyPairs, mutualScores, mutualLow, mutualHigh))
         mutualData.sort(key=lambda x: x[1], reverse=True)
-        topFiveMutual = mutualData[:5]
+        topData = mutualData[:5]
+        topPairs, topScores, topLow, topHigh = zip(*topData)
 
-        topPairs, topScores, topLow, topHigh = zip(*topFiveMutual)
-        xMutual = np.arange(len(topPairs))
+        xPosMutual = np.arange(len(topPairs))
 
-        # Bars for the top 5 mutual scores.
         bars2 = ax2.bar(
-            xMutual, topScores, width,
-            label='Mutual Score', color="blue"
+            xPosMutual, topScores, width, label='Mutual Score', color="blue"
         )
         ax2.errorbar(
-            xMutual, topScores,
+            xPosMutual, topScores,
             yerr=[
                 np.subtract(topScores, topLow),
                 np.subtract(topHigh, topScores)
             ],
-            fmt='o', color='orange', label='Min/Max Mutual Score',
-            capsize=5
+            fmt='o', color='orange', label='Min/Max Mutual Score', capsize=5
         )
         ax2.set_xlabel('Strategy Pairs')
         ax2.set_ylabel('Mutual Scores')
         ax2.set_title('Top 5 Mutual scores per strategy pair')
-        ax2.set_xticks(xMutual)
-        ax2.set_xticklabels(topPairs, rotation=45)
+        ax2.set_xticks(xPosMutual)
+        ax2.set_xticklabels(topPairs, rotation=45, ha='right')
         ax2.legend()
 
-        # Balken voor aantal wins
         winData = list(zip(self.names, self.roundWins, barColors))
         winData.sort(key=lambda x: x[1], reverse=True)
-        sortedNamesW, sortedWins, sortedColorsW = zip(*winData)
-        xWins = np.arange(len(sortedNamesW))
+        sortedNamesW, sortedWins, sortedColsW = zip(*winData)
+        xPosWins = np.arange(len(sortedNamesW))
 
         _ = ax3.bar(
-            xWins, sortedWins, width,
-            label='Wins', color=sortedColorsW
+            xPosWins, sortedWins, width, label='Wins', color=sortedColsW
         )
         ax3.set_xlabel('Strategies')
         ax3.set_ylabel('Wins')
         ax3.set_title('Total number of wins per strategy')
-        ax3.set_xticks(xWins)
-        ax3.set_xticklabels(sortedNamesW, rotation=45)
+        ax3.set_xticks(xPosWins)
+        ax3.set_xticklabels(sortedNamesW, rotation=45, ha='right')
         ax3.legend()
 
         plt.tight_layout()
         plt.show()
+
 
 class SimpleGUI:
     """
