@@ -443,7 +443,7 @@ class Strategy:
                     strategy = self.stratList[s]
                     print(f"Strategy {s}: {strategy}")
 
-                    scoreA, _ = self.playMatch(rule_table, strategy, rt)
+                    scoreA, _, _, _ = self.playMatch(rule_table, strategy, rt)
 
                     self.sumScores[rt] += scoreA
 
