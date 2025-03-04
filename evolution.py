@@ -31,6 +31,7 @@ class Strategy:
         self.population_size = 0
         self.generations = 0
         self.round = 0
+        self.mutSize = 0
 
 
         self.stratList = [
@@ -395,14 +396,11 @@ class Strategy:
         child = dict(child_items)
         print(child)
 
-        # if the mutation prob is 0.01
-        if np.random.rand() < 0.01:
-            mutation_index = np.random.randint(0, len(child_items))
+        for key in child.keys():
+            if np.random.rand() < self.mutSize:  # 1% chance for each gene to mutate
+                child[key] = (child[key] + 1) % 2
+                print(f"Mutation applied at {key}, new value: {child[key]}")
 
-            # Change the value of the mutation index to add mutation.
-            key_to_mutate = list(child.keys())[mutation_index]
-            child[key_to_mutate] = (child[key_to_mutate] + 1 ) % 2
-            print(f"Mutation applied at {key_to_mutate}, new value: {child[key_to_mutate]}")
 
         print(child)
 
@@ -500,13 +498,13 @@ class Strategy:
         barColors = []
         for rate in cooperationRate:
             if rate <= 0.4:
-                color = "#8B0000"       # Dark red (0-25%)
+                color = "#8B0000"       # Dark red (0-40%)
             elif rate <= 0.50:
-                color = "#FF4500"       # Orange-red (25-50%)
+                color = "#FF4500"       # Orange-red (40-50%)
             elif rate <= 0.6:
-                color = "#FFFF00"       # Yellow-green (50-75%)
+                color = "#FFFF00"       # Yellow-green (50-60%)
             else:
-                color = "#008000"       # Green (75-100%)
+                color = "#008000"       # Green (60-100%)
             barColors.append(color)
 
         _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
@@ -855,7 +853,7 @@ class SimpleGUI:
         self.nEntry.insert(0, "1")
         self.nEntry.grid(row=6, column=1, padx=10, pady=5)
 
-        Label(self.root, text="Population size (min 6)").grid(row=7, column=0, padx=10, pady=5)
+        Label(self.root, text="Population size (min 20)").grid(row=7, column=0, padx=10, pady=5)
         self.PopSize = Entry(self.root)
         self.PopSize.insert(0, "20")
         self.PopSize.grid(row=7, column=1, padx=10, pady=5)
@@ -865,8 +863,13 @@ class SimpleGUI:
         self.GenSize.insert(0, "50")
         self.GenSize.grid(row=8, column=1, padx=10, pady=5)
 
+        Label(self.root, text="Mutation rate").grid(row=9, column=0, padx=10, pady=5)
+        self.mutSize = Entry(self.root)
+        self.mutSize.insert(0, "0.01")
+        self.mutSize.grid(row=9, column=1, padx=10, pady=5)
 
-        Label(self.root, text="Choose Environment (nothing selected is both):").grid(row=9, column=0, padx=10, pady=5)
+
+        Label(self.root, text="Choose Environment (nothing selected is both):").grid(row=10, column=0, padx=10, pady=5)
 
         self.niceEnvVar = BooleanVar()
         self.selfishEnvVar = BooleanVar()
@@ -875,18 +878,18 @@ class SimpleGUI:
         self.selfishEnvVar.trace_add("write", lambda *args: self.niceEnvVar.set(False) if self.selfishEnvVar.get() else None)
 
         self.niceCheck = Checkbutton(self.root, text="Nice Environment", variable=self.niceEnvVar)
-        self.niceCheck.grid(row=9, column=1, padx=5, pady=5, sticky="w")
+        self.niceCheck.grid(row=10, column=1, padx=5, pady=5, sticky="w")
 
         self.selfishCheck = Checkbutton(self.root, text="Selfish Environment", variable=self.selfishEnvVar)
-        self.selfishCheck.grid(row=9, column=2, padx=5, pady=5, sticky="w")
+        self.selfishCheck.grid(row=10, column=2, padx=5, pady=5, sticky="w")
 
         # Button to start the tournament
         self.tourneyButton = Button(self.root, text="Start Tournament",
                                     command=self.startTournament)
-        self.tourneyButton.grid(row=10, column=0, columnspan=2, pady=10)
+        self.tourneyButton.grid(row=11, column=0, columnspan=2, pady=10)
 
         Button(self.root, text="Exit", command=self.root.quit)\
-            .grid(row=11, column=0, columnspan=2, pady=10)
+            .grid(row=12, column=0, columnspan=2, pady=10)
 
 
     def startTournament(self):
@@ -908,6 +911,8 @@ class SimpleGUI:
         s.generations = int(self.GenSize.get())
 
         s.round = int(self.roundsEntry.get())
+
+        s.mutSize = float(self.mutSize.get())
 
 
         if s.genetic:
