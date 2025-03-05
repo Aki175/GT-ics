@@ -860,7 +860,7 @@ class SimpleGUI:
 
         Label(self.root, text="Mutation rate").grid(row=9, column=0, padx=10, pady=5)
         self.mutSize = Entry(self.root)
-        self.mutSize.insert(0, "0.01")
+        self.mutSize.insert(0, "0.001")
         self.mutSize.grid(row=9, column=1, padx=10, pady=5)
 
 
