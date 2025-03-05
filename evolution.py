@@ -1,5 +1,8 @@
 # Name: Hakan Bektas & Akbar Ismatullayev
 # Student ID: 15178684 & 14991721 (akbar)
+# Description: performs a GA with 19 predefined strategies which behave
+# as the enviroment of the GA. We will make random rule tables with
+# the size of the population. Start the program with python3 evolution.py
 
 import numpy as np
 import heapq
@@ -273,7 +276,6 @@ class Strategy:
 
     # Match / Round logic
 
-    # is dit de payoff table?
     def scoreRound(self, a, b):
         """
         Returns (pointsA, pointsB) for a single round,
@@ -307,7 +309,6 @@ class Strategy:
             originalOwn = self.historyOwn.copy()
             originalOpp = self.historyOpp.copy()
 
-            # Move A
             if self.genetic:
                 moveA = self.random_strat(stratA)
             else:
@@ -319,26 +320,18 @@ class Strategy:
             self.historyOwn = tempOwn
             self.historyOpp = tempOpp
 
-            # Move B
             moveB = stratB()
 
             # Restore original perspective
             self.historyOwn = originalOwn
             self.historyOpp = originalOpp
 
-            # Append moves to histories
             self.historyOwn.append(moveA)
             self.historyOpp.append(moveB)
 
-            # Scoring
             ptsA, ptsB = self.scoreRound(moveA, moveB)
             scoreA += ptsA
             scoreB += ptsB
-
-            # if ptsA >= ptsB:
-            #     round_winsA += 1
-            # elif ptsB >= ptsA:
-            #     round_winsB += 1
 
             if ptsA == self.reward or ptsA == self.temptation:
                 round_winsA += 1
@@ -368,9 +361,11 @@ class Strategy:
 
 
     def generate_random_rule_table(self):
-        # since for every n you have 4 states
+        """
+        Generates the rule table, since you have 4 states you can make
+        4^n rule table + n
+        """
         choices = [(0, 0), (0, 1), (1, 0), (1, 1)]
-        # responses
         states = [0, 1]
         all_combinations = list(itertools.product(choices,
                                                   repeat=self.genetic_previous_n))
@@ -422,6 +417,12 @@ class Strategy:
         return child
 
     def tournament_random(self):
+        """
+        Here is the logic of tournament where the GA start and the rule table
+        competes again the strats
+        """
+
+
         self.average_score = []
         rule_tables = [self.generate_random_rule_table()
                        for _ in range(self.population_size)]
@@ -497,6 +498,11 @@ class Strategy:
 
 
     def plot_rule_table(self):
+        """
+        Plots the bar charts of every rule table and the average score of
+        each generataion as line graph
+        """
+
         totalRoundsPerRT = self.round * len(self.stratList)
 
         cooperationRate = []
@@ -505,21 +511,16 @@ class Strategy:
             cRate = coop / totalRoundsPerRT
             cooperationRate.append(cRate)
 
-        # barColors = [
-        #     "green" if rate > 0.5 else "black"
-        #     for rate in cooperationRate
-        # ]
-
         barColors = []
         for rate in cooperationRate:
             if rate <= 0.4:
-                color = "#8B0000"       # Dark red (0-40%)
+                color = "#8B0000"
             elif rate <= 0.50:
-                color = "#FF4500"       # Orange-red (40-50%)
+                color = "#FF4500"
             elif rate <= 0.6:
-                color = "#FFFF00"       # Yellow-green (50-60%)
+                color = "#FFFF00"
             else:
-                color = "#008000"       # Green (60-100%)
+                color = "#008000"
             barColors.append(color)
 
         _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
@@ -533,7 +534,8 @@ class Strategy:
             label='Sum Scores',
             color=barColors
         )
-        ax1.set_title(f"Random rule table results with {self.generations} "
+        ax1.set_title(f"{self.population_size} Random rule table results "
+                      f"with {self.generations} "
                       f"generations and looking at {self.genetic_previous_n} "
                       f" previous Ns ")
         ax1.set_xlabel("Rule Table Index")
@@ -810,7 +812,7 @@ class SimpleGUI:
             row=0, column=0, padx=10, pady=5
         )
         self.roundsEntry = Entry(self.root)
-        self.roundsEntry.insert(0, "10")
+        self.roundsEntry.insert(0, "100")
         self.roundsEntry.grid(row=0, column=1, padx=10, pady=5)
 
         Label(self.root, text="Reward (C, C):").grid(row=1, column=0, padx=10, pady=5)
@@ -846,7 +848,7 @@ class SimpleGUI:
 
         Label(self.root, text="Population size (min 20)").grid(row=7, column=0, padx=10, pady=5)
         self.PopSize = Entry(self.root)
-        self.PopSize.insert(0, "20")
+        self.PopSize.insert(0, "50")
         self.PopSize.grid(row=7, column=1, padx=10, pady=5)
 
         Label(self.root, text="Generations").grid(row=8, column=0, padx=10, pady=5)
@@ -860,18 +862,23 @@ class SimpleGUI:
         self.mutSize.grid(row=9, column=1, padx=10, pady=5)
 
 
-        Label(self.root, text="Choose Environment (nothing selected is both):").grid(row=10, column=0, padx=10, pady=5)
+        Label(self.root, text="Choose Environment (nothing "
+             " selected is both):").grid(row=10, column=0, padx=10, pady=5)
 
         self.niceEnvVar = BooleanVar()
         self.selfishEnvVar = BooleanVar()
 
-        self.niceEnvVar.trace_add("write", lambda *args: self.selfishEnvVar.set(False) if self.niceEnvVar.get() else None)
-        self.selfishEnvVar.trace_add("write", lambda *args: self.niceEnvVar.set(False) if self.selfishEnvVar.get() else None)
+        self.niceEnvVar.trace_add("write", lambda *args:
+                                  self.selfishEnvVar.set(False) if self.niceEnvVar.get() else None)
+        self.selfishEnvVar.trace_add("write", lambda *args:
+                                     self.niceEnvVar.set(False) if self.selfishEnvVar.get() else None)
 
-        self.niceCheck = Checkbutton(self.root, text="Nice Environment", variable=self.niceEnvVar)
+        self.niceCheck = Checkbutton(self.root, text="Nice Environment",
+                                     variable=self.niceEnvVar)
         self.niceCheck.grid(row=10, column=1, padx=5, pady=5, sticky="w")
 
-        self.selfishCheck = Checkbutton(self.root, text="Selfish Environment", variable=self.selfishEnvVar)
+        self.selfishCheck = Checkbutton(self.root, text="Selfish Environment",
+                                        variable=self.selfishEnvVar)
         self.selfishCheck.grid(row=10, column=2, padx=5, pady=5, sticky="w")
 
         # Button to start the tournament
