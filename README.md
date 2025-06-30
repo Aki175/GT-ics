@@ -1,6 +1,6 @@
 # GT-ics – The Evolution of Cooperation
 
-This project models and simulates the **evolution of cooperation** using the **Iterated Prisoner's Dilemma** and **Genetic Algorithms**. It explores how cooperation can emerge among selfish agents in repeated interactions.
+This project models and simulates the **evolution of cooperation** using the Iterated Prisoner's Dilemma and Genetic Algorithms. It explores how cooperation can emerge among selfish agents in repeated interactions.
 
 ## Project Summary
 
